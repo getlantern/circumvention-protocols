@@ -1,0 +1,30 @@
+id: hysteria2
+name: "Hysteria 2"
+family: other
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/apernet/hysteria
+  docs: https://v2.hysteria.network/
+implementations:
+  - {family: other, repo: github.com/apernet/hysteria, notes: "canonical implementation; uses apernet/quic-go (a fork) for the customized congestion-control behavior"}
+  - {family: sing-box, repo: github.com/sagernet/sing-box, notes: "hysteria2 inbound + outbound; reuses the same wire protocol with a different QUIC stack"}
+  - {family: lantern, repo: github.com/getlantern/lantern-box, notes: "hysteria2 is one of the protocols Lantern's bandit selects from"}
+references: []
+internal_refs:
+  - 2026-04-non-protocol-evasion
+tags:
+  - quic
+  - http3
+  - udp
+  - psk-auth
+  - salamander-obfs
+  - blake2b-keystream
+  - frame-padding
+  - bbr-congestion-control
+  - look-like-http3
+  - look-like-udp-noise
+license: MIT
+body_path: text/hysteria2.md
+summary: |
+  QUIC-based proxy that authenticates with an HTTP/3 request to a fixed virtual host (`https://hysteria/auth`) carrying a `Hysteria-Auth: <password>` header — the server replies HTTP/3 status `233` on success. Proxy traffic rides as custom QUIC stream frames (frame type `0x401` for TCP requests) and QUIC datagrams (for UDP), all with adjustable padding to defeat shape fingerprinting. An optional **Salamander** obfuscation layer wraps every UDP packet (including the QUIC handshake itself) in a per-packet BLAKE2b-256 keystream XOR keyed by a pre-shared password + 8-byte random salt — without it, the connection looks like generic HTTP/3; with it, it looks like undifferentiated UDP noise. Custom congestion control ("Brutal CC") plus QUIC's built-in loss recovery is what gives hysteria2 its fast-over-lossy-networks reputation, but the design's evasion surface is the auth-via-HTTP/3 + Salamander combo, not the CC.

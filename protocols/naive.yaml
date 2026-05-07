@@ -1,0 +1,27 @@
+id: naive
+name: "NaïveProxy"
+family: other
+status: active
+languages: [c++, go]
+upstream:
+  repo: https://github.com/klzgrad/naiveproxy
+  docs: https://github.com/klzgrad/naiveproxy/blob/master/README.md
+implementations:
+  - {family: other, repo: github.com/klzgrad/naiveproxy, notes: "client — fork of Chromium's network stack ('net/'), C++. Reuses the actual real Chrome networking code, not a mimic."}
+  - {family: other, repo: github.com/klzgrad/forwardproxy, notes: "server — fork of Caddy's forwardproxy plugin (Go) on the 'naive' branch, adds the padding layer over standard HTTP CONNECT."}
+references: []
+internal_refs: []
+tags:
+  - chromium-fork
+  - real-chrome-stack
+  - http-connect
+  - http2
+  - tls-fingerprint-real
+  - application-fronting
+  - probe-resistance-via-fronting
+  - first-packet-padding
+  - basic-auth
+license: BSD-3-Clause
+body_path: text/naive.md
+summary: |
+  Forks Chromium's actual network stack ("net/") to use it as a SOCKS5 → HTTPS proxy client, so the wire connection IS a real Chrome HTTP/2-over-TLS-1.3 session — not a mimic. JA3 / JA4 / TLS-extension-ordering are byte-identical to whatever the matching Chrome release sends because they ARE that release. The server is a fork of Caddy's `forwardproxy` plugin: a real Caddy host that serves a real website at the configured domain, with HTTP CONNECT proxying gated by a `Proxy-Authorization: Basic` header. Probes that don't have the right credentials get the regular website (this is the "application fronting" probe-resistance design — same Caddy site, different code path based on a header). The Caddy fork adds a small padding layer (per-direction, only on the first few packets: 3-byte header + 0–255 random-size pad) to defeat first-packet length analysis. The price of all this is: the binary is a Chromium build, and operators must roll the binary forward whenever Chrome updates its TLS fingerprint, or the proxy starts looking anachronistic.

@@ -1,0 +1,20 @@
+# Copy this file to protocols/<id>.yaml and edit. Read the upstream
+# code at a specific commit before writing the body — don't paraphrase
+# the README. Note the SHA in the body's Implementation section.
+id: my-new-protocol
+name: ""
+family: other                # lantern / sing-box / xray / v2ray / psiphon / outline / tor-pt / wireguard / openvpn / other
+status: active               # active / deprecated / research-only / blocked-broadly
+languages: []
+upstream:
+  repo: ""
+  docs: ""
+  spec: ""
+implementations: []
+references: []               # IDs of papers in circumvention-corpus
+internal_refs: []            # IDs of docs in circumvention-corpus-private
+tags: []
+license: ""
+body_path: text/my-new-protocol.md
+summary: |
+  One-paragraph summary surfaced by list_protocols / search_protocols.

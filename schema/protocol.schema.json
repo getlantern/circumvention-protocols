@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://getlantern.org/circumvention-protocols/protocol.schema.json",
+  "title": "CircumventionProtocol",
+  "description": "A deployed censorship-circumvention protocol — distilled metadata + a markdown body file.",
+  "type": "object",
+  "required": ["id", "name", "family", "status", "body_path", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable slug. Lowercase letters, digits, dashes. Convention: <wire-protocol-name>[-<variant>].",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "family": {
+      "type": "string",
+      "description": "Originating / canonical implementation family.",
+      "enum": [
+        "lantern",
+        "sing-box",
+        "xray",
+        "v2ray",
+        "psiphon",
+        "outline",
+        "tor-pt",
+        "wireguard",
+        "openvpn",
+        "other"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "description": "Current operational status.",
+      "enum": [
+        "active",
+        "deprecated",
+        "research-only",
+        "blocked-broadly"
+      ]
+    },
+    "languages": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Implementation languages (e.g. go, rust, c)."
+    },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repo": { "type": "string", "format": "uri" },
+        "docs": { "type": "string", "format": "uri" },
+        "spec": { "type": "string", "format": "uri" }
+      }
+    },
+    "implementations": {
+      "type": "array",
+      "description": "Other repos shipping the same wire protocol.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["family", "repo"],
+        "properties": {
+          "family": { "type": "string" },
+          "repo":   { "type": "string" },
+          "notes":  { "type": "string" }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "description": "IDs of papers in circumvention-corpus that analyze this protocol.",
+      "items": { "type": "string" }
+    },
+    "internal_refs": {
+      "type": "array",
+      "description": "IDs of docs in circumvention-corpus-private that analyze this protocol.",
+      "items": { "type": "string" }
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "license": { "type": "string" },
+    "body_path": {
+      "type": "string",
+      "description": "Repo-relative path to the markdown body.",
+      "pattern": "^text/.+\\.md$"
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-paragraph summary surfaced by list / search hits."
+    }
+  }
+}

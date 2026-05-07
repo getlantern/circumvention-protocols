@@ -1,0 +1,28 @@
+id: reflex
+name: "Reflex"
+family: lantern
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/getlantern/lantern-box
+  docs: https://github.com/getlantern/engineering/blob/main/docs/reflex-whitepaper.md
+implementations:
+  - {family: lantern, repo: github.com/getlantern/lantern-box, notes: "canonical sing-box outbound + inbound at protocol/reflex/"}
+references: []
+internal_refs:
+  - 2026-04-reflex-whitepaper
+  - 2026-04-non-protocol-evasion
+tags:
+  - tls-role-reversal
+  - server-initiated-clienthello
+  - silence-based-probe-resistance
+  - tcp-masquerade
+  - cert-fingerprint-auth
+  - sni-evasion
+  - ja3-ja4-evasion
+  - fully-encrypted-traffic-detection
+  - lantern-protocol
+license: Apache-2.0
+body_path: text/reflex.md
+summary: |
+  Lantern protocol that reverses TLS roles relative to TCP — the TCP client acts as the TLS server, the proxy (TCP server) sends the ClientHello. No ClientHello ever appears in the client→server direction, so SNI extraction, JA3/JA4 fingerprinting, and fully-encrypted-traffic detection (all of which inspect the client→server first packet) all fail to identify the connection. Authentication is the SHA-256 fingerprint of the client's TLS certificate, validated during the standard TLS handshake — no pre-handshake bytes that could become a fingerprint. Probe resistance is silence-based: the server waits a jittered timeout for client silence before sending its ClientHello; any client that speaks first (active probes, misdirected TLS clients) is transparently forwarded to a real TLS service (`masquerade_upstream`) instead. Probes never see Reflex.

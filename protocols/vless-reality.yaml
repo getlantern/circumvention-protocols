@@ -1,0 +1,32 @@
+id: vless-reality
+name: "VLESS + REALITY"
+family: xray
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/XTLS/Xray-core
+  spec: https://github.com/XTLS/REALITY
+  docs: https://github.com/XTLS/REALITY/blob/main/README.md
+implementations:
+  - {family: xray, repo: github.com/XTLS/Xray-core, notes: "canonical implementation; client at transport/internet/reality/reality.go, server lives in xtls/reality (a fork of crypto/tls)"}
+  - {family: sing-box, repo: github.com/sagernet/sing-box, notes: "VLESS inbound + outbound with REALITY transport; uses the same xtls/reality library"}
+references:
+  - 2023-niere-poster
+internal_refs: []
+tags:
+  - tls-mimicry
+  - utls
+  - look-like-something
+  - real-cert-borrowing
+  - x25519-ecdh
+  - aead-session-id
+  - active-probe-resistance
+  - tcp-relay-fallback
+  - ephemeral-temp-cert
+  - sni-mimicry
+  - anti-active-probe
+  - spider-mode
+license: MPL-2.0
+body_path: text/vless-reality.md
+summary: |
+  VLESS payload protocol carried inside a REALITY transport. REALITY makes the proxy server appear to be a chosen real cover site (e.g. `dl.google.com`) by relaying TCP to that site's real IP whenever a client's request can't be authenticated — so to active probes, the server IS the cover site (real cert, real handshake, real responses). Authenticated REALITY clients embed an AEAD-sealed marker in the TLS SessionID, derived via X25519 ECDH against the server's static public key; the REALITY server intercepts the handshake mid-flight and signs an ephemeral temp cert with the derived auth key — the legitimate client receives that temp cert and proceeds. A client that receives the real cover-site cert instead enters "spider" mode (fetches HTTPS pages on the cover domain) so its retry behavior matches an ordinary browser. Defeats SNI extraction (real cover SNI), JA3/JA4 (uTLS Chrome), TLS-cert reputation (real cert is real), and active probing (probe completes a real handshake with the cover site).

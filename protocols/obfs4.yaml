@@ -1,0 +1,28 @@
+id: obfs4
+name: "obfs4"
+family: tor-pt
+status: blocked-broadly
+languages: [go]
+upstream:
+  repo: https://github.com/Yawning/obfs4
+  spec: https://github.com/Yawning/obfs4/blob/master/doc/obfs4-spec.txt
+  docs: https://github.com/Yawning/obfs4
+implementations:
+  - {family: tor-pt, repo: github.com/Yawning/obfs4, notes: "canonical Yawning Angel implementation; pluggable transport for Tor"}
+  - {family: tor-pt, repo: gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/lyrebird, notes: "Tor Project's actively-maintained successor fork (lyrebird)"}
+references: []
+internal_refs: []
+tags:
+  - look-like-nothing
+  - ntor-handshake
+  - elligator-2
+  - curve25519
+  - xsalsa20-poly1305
+  - siphash-length-obfuscation
+  - tor-pluggable-transport
+  - blocked-by-fet
+  - canonical-anti-pattern
+license: BSD-2-Clause
+body_path: text/obfs4.md
+summary: |
+  The canonical "look-like-nothing" pluggable transport for Tor. obfs4 obfuscates a TCP stream to be statistically indistinguishable from random bytes — no TLS, no HTTP, no recognizable structure. The handshake is based on Tor's ntor: client and server exchange ephemeral Curve25519 public keys disguised as uniform random bytes via the Elligator 2 mapping, with random-length padding (85–8128 bytes per side) between handshake fields, and an HMAC marker (`M_C`/`M_S`) embedded so the receiver can find the authentication MAC inside the otherwise-uniform stream. After the handshake, application data is carried in NaCl secretbox (XSalsa20+Poly1305) frames with **2-byte length fields XORed with a SipHash-OFB keystream** so consecutive frame sizes don't correlate. Authentication and identity binding require the client to know an out-of-band NODEID + Curve25519 public key, so an active probe can't fake a handshake. **Status: blocked-broadly.** This is the protocol the GFW's fully-encrypted-traffic detection ([USENIX Security 2023](https://gfw.report/publications/usenixsecurity23/en/)) was designed to find — high-entropy, no protocol signature on the first packet — and it has been blocked by GFW + several other censors since ~2022-2023. Catalog-relevant as the canonical anti-pattern for modern protocol design: every "don't do look-like-nothing in 2026" lecture cites obfs4.

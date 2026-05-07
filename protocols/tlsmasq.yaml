@@ -1,0 +1,26 @@
+id: tlsmasq
+name: "tlsmasq"
+family: lantern
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/getlantern/tlsmasq
+  docs: https://github.com/getlantern/tlsmasq/blob/main/README.md
+implementations:
+  - {family: lantern, repo: github.com/getlantern/tlsmasq, notes: "canonical library; consumed by Lantern's flashlight stack (still in production). Not yet ported to the newer lantern-box / sing-box-integrated stack."}
+references: []
+internal_refs: []
+tags:
+  - tls-mimicry
+  - real-cert-borrowing
+  - tcp-relay-fallback
+  - active-probe-resistance
+  - proxied-handshake
+  - hijacked-handshake
+  - hmac-signal
+  - lantern-protocol
+  - flashlight-stack
+license: Apache-2.0
+body_path: text/tlsmasq.md
+summary: |
+  Lantern protocol that proxies an **entire** TLS handshake to a real origin TLS server (e.g. microsoft.com) so both peers see the real cert chain and the real handshake. The client then sends a "completion signal" — a TLS record encrypted with a 52-byte pre-shared secret using TLS-record formatting that matches the negotiated version + cipher suite — to flag itself as a real client. The server sends back its own signal containing an HMAC over the entire proxied-handshake transcript (anti-injection + anti-MITM), then both sides "hijack" the live connection: a second, fresh TLS handshake runs *inside* TLS records that look like ongoing app data of the first session, producing fresh symmetric keys for the actual proxy traffic. Probes that don't know the secret get a real conversation with the real origin. Still in production via Lantern's flashlight stack; not yet ported to the newer lantern-box / sing-box-integrated stack. Conceptual sibling of samizdat (which the team's docs cite as inspired by tlsmasq) and an earlier independent realization of the relay-by-default pattern that REALITY later integrated deeper into the TLS state machine.

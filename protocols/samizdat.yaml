@@ -1,0 +1,33 @@
+id: samizdat
+name: "Samizdat"
+family: lantern
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/getlantern/samizdat
+  docs: https://github.com/getlantern/samizdat/blob/main/README.md
+implementations:
+  - {family: lantern, repo: github.com/getlantern/samizdat, notes: "canonical library; consumed by lantern-box's samizdat outbound and Lantern's bandit"}
+  - {family: lantern, repo: github.com/getlantern/lantern-box, notes: "sing-box outbound + inbound wrapping the samizdat library"}
+references: []
+internal_refs:
+  - 2026-04-non-protocol-evasion
+  - 2026-04-residential-peer-proxies
+  - 2026-04-reflex-whitepaper
+tags:
+  - tls-mimicry
+  - utls
+  - look-like-something
+  - h2-multiplexing
+  - active-probe-resistance
+  - tcp-masquerade
+  - geneva-fragmentation
+  - traffic-shaping
+  - tspu
+  - russia
+  - psk-auth
+  - lantern-core
+license: Apache-2.0
+body_path: text/samizdat.md
+summary: |
+  Lantern's primary protocol: a single TLS 1.3 + HTTP/2 connection that authenticates inside the TLS SessionID and looks indistinguishable from a Chrome browser visiting a real cover site (e.g. ok.ru). Multiplexes proxy traffic through HTTP/2 CONNECT streams (one TCP for many tunneled connections, defeating connection-count policing). On auth failure, the server transparently TCP-proxies the buffered ClientHello to the real cover domain — active probes complete a real handshake against the real cert and receive real HTTP responses. Adds Geneva-inspired TCP fragmentation at the SNI boundary against TSPU-style stateless DPI and 1-30ms timing jitter against cross-layer RTT fingerprinting.
