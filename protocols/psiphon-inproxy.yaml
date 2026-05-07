@@ -1,0 +1,29 @@
+id: psiphon-inproxy
+name: "Psiphon Inproxy (Conduit)"
+family: psiphon
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/Psiphon-Labs/psiphon-tunnel-core
+  docs: https://github.com/Psiphon-Labs/psiphon-tunnel-core/blob/master/psiphon/common/inproxy/doc.go
+implementations:
+  - {family: psiphon, repo: github.com/Psiphon-Labs/psiphon-tunnel-core, notes: "canonical library at psiphon/common/inproxy/. Tunnel-protocol prefix INPROXY-WEBRTC- prepends to any underlying Psiphon tunnel protocol (e.g. INPROXY-WEBRTC-OSSH)"}
+  - {family: psiphon, repo: github.com/Psiphon-Inc/conduit, notes: "Conduit — the user-facing volunteer-proxy app (Android, Mac, CLI; iOS shelved). Wraps psiphon-tunnel-core's inproxy package as the proxy role."}
+references: []
+internal_refs: []
+tags:
+  - p2p-1st-hop
+  - webrtc
+  - dtls-fingerprint-resistance
+  - covertdtls
+  - noise-protocol-broker-session
+  - domain-fronted-broker
+  - ed25519-proxy-identity
+  - residential-ip-volunteers
+  - per-protocol-prefix
+  - flash-proxy-descendant
+  - psiphon-protocol
+license: GPL-3.0
+body_path: text/psiphon-inproxy.md
+summary: |
+  Psiphon's WebRTC 1st-hop "in-proxy" mechanism: volunteer Conduit users (typically on desktops in unblocked or even partially-blocked regions) act as ephemeral peer proxies that relay client traffic to real Psiphon servers. The wire shape is INPROXY-WEBRTC- prepended to any underlying Psiphon tunnel protocol (so e.g. `INPROXY-WEBRTC-OSSH` is OSSH carried over a WebRTC 1st hop). Brokers — run by Psiphon — pair clients with proxies; the broker connection itself is a Noise-protocol session inside a domain-fronted CDN tunnel, so even the CDN can't observe the broker handshake. WebRTC handshakes use Psiphon-Labs/covert-dtls for ClientHello randomization / browser-mimicry, defeating the same DPI rule that began blocking Snowflake by pion-DTLS fingerprint in March 2026. Each proxy holds an Ed25519 long-term identity; broker→server messages identifying the original client IP + proxy ID piggyback on the client's existing handshake round-trips (no new server-bound connection from the broker), so the broker never has to talk to servers directly. Compartmentalization: personal compartment IDs (friends/family) vs. common compartment IDs (Psiphon-distributed). Conceptually similar to Snowflake and Lantern's Unbounded; key differentiator is the layered architecture (inproxy is a 1st-hop transport orthogonal to the underlying tunnel protocol, not a full tunnel itself).

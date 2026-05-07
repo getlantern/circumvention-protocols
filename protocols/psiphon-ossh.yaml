@@ -1,0 +1,26 @@
+id: psiphon-ossh
+name: "Psiphon OSSH (Obfuscated SSH)"
+family: psiphon
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/Psiphon-Labs/psiphon-tunnel-core
+  spec: https://github.com/brl/obfuscated-openssh/blob/master/README.obfuscation
+  docs: https://github.com/Psiphon-Labs/psiphon-tunnel-core/blob/master/psiphon/common/obfuscator/obfuscator.go
+implementations:
+  - {family: psiphon, repo: github.com/Psiphon-Labs/psiphon-tunnel-core, notes: "canonical Psiphon implementation; the OSSH obfuscator is the substrate that almost every Psiphon tunnel-protocol variant builds on (TLS-OSSH, MEEK-OSSH family, QUIC-OSSH, SHADOWSOCKS-OSSH, CONJURE-OSSH, INPROXY-WEBRTC-* derivatives)"}
+references: []
+internal_refs: []
+tags:
+  - obfuscated-ssh
+  - rc4-stream-obfuscation
+  - hkdf-keyword-derived
+  - look-like-nothing
+  - psk-keyword
+  - prefix-transform-spec
+  - psiphon-substrate
+  - acknowledged-weak-by-upstream
+license: GPL-3.0
+body_path: text/psiphon-ossh.md
+summary: |
+  The foundational obfuscation layer Psiphon's tunnel-protocol family is built on. Wraps a standard SSH session in an RC4-stream-obfuscated preamble keyed via HKDF from a pre-shared "keyword" + a per-connection 16-byte random seed. After the preamble, both sides know the obfuscator key and continue with normal SSH transport. The wire shape on the first packet is `[16B seed | 4B magic 0x0BF5CA7E | 4B pad-length | random padding (up to 8192B) | obfuscated SSH bytes]`. An optional **OSSH prefix** layer prepends a configurable transform-derived byte sequence (HTTP-like, DNS-like, etc.) before the preamble, controlled by per-region tactics. **Crucially, the upstream source code itself flags OSSH as not-for-new-designs** — RC4 is malleable, the magic value is too short for strong auth, and the obfuscator pre-dates fully-encrypted-traffic detection. Still in heavy production deployment because it's the stable platform every other Psiphon variant inherits, and the variants that wrap OSSH (TLS-OSSH, MEEK-OSSH, etc.) provide the modern evasion properties OSSH-alone can't.

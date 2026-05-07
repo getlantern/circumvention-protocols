@@ -1,0 +1,30 @@
+id: unbounded
+name: "Unbounded (Broflake)"
+family: lantern
+status: active
+languages: [go, javascript]
+upstream:
+  repo: https://github.com/getlantern/unbounded
+  docs: https://github.com/getlantern/unbounded/blob/main/README.md
+implementations:
+  - {family: lantern, repo: github.com/getlantern/unbounded, notes: "canonical implementation; Go core (clientcore/, egress/, freddie/) compiled to native binaries and to WASM for browser-resident widgets. Internal package path is still 'broflake' for historical reasons."}
+references: []
+internal_refs:
+  - 2026-04-residential-peer-proxies
+tags:
+  - p2p-swarm
+  - webrtc
+  - turbo-tunnel
+  - quic
+  - dtls-fingerprint-resistance
+  - covertdtls
+  - residential-ip-volunteers
+  - flash-proxy-descendant
+  - n-to-m-multiplexing
+  - browser-widget-volunteers
+  - ephemeral-peer-tolerant
+  - lantern-protocol
+license: Apache-2.0
+body_path: text/unbounded.md
+summary: |
+  Lantern's WebRTC P2P swarm: volunteer "widgets" running in browsers (or as native binaries) on residential IPs proxy short-lived WebRTC connections for desktops in censored regions, with persistent QUIC sessions ("Turbo Tunnel") riding on top of the ephemeral peer connections so a user's session survives any individual widget dropping out. The desktop client holds N WebRTC connections to N different widgets and multiplexes upstream traffic across them; each widget can serve M concurrent desktops. A central matchmaker (`freddie`) signals discovery and an `egress` server provides the final hop to the open internet (so widgets only see one downstream peer — the egress — and don't directly host arbitrary clients). DTLS ClientHello fingerprint randomization / browser-mimicry via the Psiphon-Labs `covert-dtls` library defeats the same DPI rule that began blocking Snowflake by pion-DTLS fingerprint in March 2026 (net4people/bbs#603). Conceptual descendant of David Fifield's original Flash Proxy + uProxy + Snowflake; key differentiators are the Turbo-Tunnel persistent state and the explicit support for one-volunteer-many-users / one-user-many-volunteers concurrency.

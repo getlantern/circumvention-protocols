@@ -1,0 +1,29 @@
+id: psiphon-tls-ossh
+name: "Psiphon TLS-OSSH"
+family: psiphon
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/Psiphon-Labs/psiphon-tunnel-core
+  docs: https://github.com/Psiphon-Labs/psiphon-tunnel-core/blob/master/psiphon/tlsTunnelConn.go
+implementations:
+  - {family: psiphon, repo: github.com/Psiphon-Labs/psiphon-tunnel-core, notes: "canonical implementation; client side at psiphon/tlsTunnelConn.go, server side wires into the obfuscator package's TLS-passthrough verification"}
+references:
+  - 2023-niere-poster
+internal_refs: []
+tags:
+  - tls-mimicry
+  - tls13
+  - psiphon-protocol
+  - obfuscated-ssh-inside-tls
+  - tls-passthrough-auth
+  - hmac-in-client-random
+  - utls
+  - randomized-tls-profile
+  - tls-padding-rfc7685
+  - clienthello-fragmentation
+  - probe-resistance-via-passthrough
+license: GPL-3.0
+body_path: text/psiphon-tls-ossh.md
+summary: |
+  OSSH (Psiphon's RC4-obfuscated SSH layer) wrapped inside a real TLS 1.3 connection. The outer TLS uses Psiphon's `CustomTLSConfig` which supports either a fixed uTLS profile (`TLSProfile`) or per-connection randomized profiles (`RandomizedTLSProfileSeed`); on top of that, optional ClientHello-record fragmentation and RFC-7685 TLS padding randomize first-packet length. **Authentication is embedded in the TLS ClientHello's 32-byte `client_random` field** as a 16-byte random nonce + 16-byte HMAC-SHA256 truncated tag, keyed by HKDF from a per-server "obfuscated key" with an optional 20-minute time-window factor for replay defense. The server (Psiphon's TLS terminator) computes the same HMAC; valid → strip the OSSH layer, accept the SSH session inside; invalid → fall through to a configured passthrough HTTPS service (e.g. a real website on the same IP). To a passive observer this is just TLS 1.3 to a normal HTTPS site; to an active probe without the obfuscated key, the response is whatever the passthrough host serves. The OSSH inside provides the SSH-level authentication and the "session keying"; TLS-OSSH's contribution is the modern cover protocol that bare OSSH lacks.
