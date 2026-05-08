@@ -21,6 +21,16 @@ underutilized; gives a circumvention mimic a different
 wire shape than plain TLS with even higher collateral
 protection than RDP.
 
+**Caveat (see §STARTTLS-on-cleartext vs. implicit-TLS below):**
+the cover-population is **highly heterogeneous across the
+four ports** — TCP/25 MTA-to-MTA STARTTLS is universal and
+durable, but TCP/587 / 143 / 110 client-side use is shifting
+to implicit-TLS (465 / 993 / 995) and proprietary HTTPS APIs
+(Microsoft Graph, Gmail API). Operational quirk: residential
+ISPs block outbound TCP/25, so the strongest cover (server-
+to-server SMTP MTA-MTA) requires the circumvention client
+to run from a non-residential IP.
+
 ## Standardization
 
 Mail core specs:
@@ -327,6 +337,118 @@ on TCP/143 and TCP/110, but the *MTA-to-MTA* surface on
 TCP/25 remains intact and large because there is no
 "implicit-TLS" deployment on TCP/25 (MTA-to-MTA always
 opportunistically STARTTLSes).
+
+## STARTTLS-on-cleartext vs. implicit-TLS — the cover-population shape
+
+Critical nuance for cover candidacy: the four ports this
+entry covers (TCP/25, 587, 143, 110) have **dramatically
+different cover-population strengths in 2026**. The catalog
+summary's "email is universal, the cover-population is
+enormous" framing is true *globally* but flattens
+heterogeneity that matters for circumvention design.
+
+Five structural pressures shape the per-port deployment
+mix:
+
+1. **RFC 8314 (Jan 2018)** explicitly recommends implicit-
+   TLS over STARTTLS for new MUA deployments. Major
+   providers have implemented it; Apple Mail, modern
+   Outlook, and most mobile MUAs default to implicit-TLS
+   for new client setups.
+2. **Web / HTTPS eclipse** — most consumer email reading
+   in 2026 happens via web clients (Gmail web,
+   Outlook.com web, mail.icloud.com) or proprietary mobile
+   apps using HTTPS APIs (Microsoft Graph, Gmail API),
+   not classic IMAP / POP3 over TCP/143 / 110.
+3. **Microsoft Modern Authentication** — Outlook 365
+   increasingly uses Microsoft Graph over HTTPS instead of
+   legacy SMTP submission / IMAP. Microsoft has been
+   gradually removing Basic Auth from Exchange Online for
+   years.
+4. **Provider defaults shift to implicit-TLS ports** —
+   Gmail, iCloud, Yahoo configurations push 465 / 993 /
+   995 over 587 / 143 / 110 for new client setups.
+5. **MTA-MTA STARTTLS on TCP/25 endures** — RFC 8461
+   MTA-STS and RFC 7672 DANE actively push the ecosystem
+   toward enforced TLS on this port. Every domain
+   receiving email participates. Major providers (Gmail,
+   Microsoft, Yahoo, Mailgun, SendGrid) publish MTA-STS
+   policies.
+
+Per-port cover-population assessment in 2026:
+
+| Port | Cover-population strength | Notes |
+| --- | --- | --- |
+| **TCP/25** MTA-to-MTA STARTTLS | **LARGE AND DURABLE** | Every domain receiving email globally. RFC 8461 / 7672 enforce TLS. Universal cover. |
+| **TCP/587** SMTP submission STARTTLS | **MEDIUM, DECLINING** | Microsoft 365 (`smtp.office365.com:587`) still mandates STARTTLS; consumer providers shifting to 465 implicit-TLS. Sending APIs (SendGrid, Mailgun, AWS SES) variable. |
+| **TCP/143** IMAP STARTTLS | **MEDIUM, DECLINING SHARPLY** | Self-hosted Dovecot still defaults; major providers default 993. Web mail eclipsing. |
+| **TCP/110** POP3 STLS | **SMALL, NICHE** | Legacy; declining quickly. Mobile / kiosk holdouts. |
+
+**The operational quirk for TCP/25**: residential ISPs
+universally block outbound TCP/25 to prevent spam. So the
+strongest cover here — MTA-MTA STARTTLS on TCP/25 — is
+**between servers**, not from residential clients. A
+circumvention design where the client runs from an
+arbitrary residential ISP **cannot use TCP/25 STARTTLS as
+cover** — the residential→server-25 flow itself is
+anomalous (no real mail server runs on a residential
+endpoint).
+
+Where mail STARTTLS-on-cleartext-port survives strongly:
+
+- **TCP/25 between mail servers** — universal, durable,
+  but server-to-server only.
+- **TCP/587 to Microsoft 365 / business mail SaaS** —
+  Outlook desktop, mail-relay pipelines, sending-API
+  customers (SendGrid, Mailgun via SMTP relay endpoints).
+- **TCP/143 to self-hosted Dovecot / Cyrus** — university
+  IT, hosting customers, small-business mail servers.
+- **TCP/587 / 143 in jurisdictions where Microsoft 365 /
+  Gmail are blocked** — domestic Iranian / Russian / Chinese
+  mail providers (Chmail, Iran Mail, Mail.ru, NetEase,
+  QQ Mail) where local STARTTLS-on-cleartext deployment
+  is more conservative.
+
+Implications for cover candidacy:
+
+- A circumvention design **between two servers using TCP/25
+  MTA-MTA STARTTLS** has the strongest cover-population
+  (universal, durable, treated as critical infrastructure).
+  But it's **server-to-server only** — client-side
+  residential users can't initiate. Workable for
+  infrastructure-to-infrastructure circumvention paths
+  (e.g. egress-to-rendezvous), not for client-facing
+  designs.
+- A circumvention design on **TCP/587 with Postfix
+  submission backing** has medium and declining cover-
+  population. Strongest when the destination IP blends
+  with Microsoft 365 / business mail SaaS endpoints. Real
+  but narrowing.
+- A circumvention design on **TCP/143 with Dovecot IMAP
+  backing** has medium and declining-sharply cover-
+  population. Strongest in self-hosted-mail-friendly
+  jurisdictions.
+- A circumvention design on **TCP/110 POP3** is niche
+  enough that the cover-population can't reliably be
+  argued.
+- **Domestic mail providers** (Chmail in Iran, Mail.ru in
+  Russia, NetEase / QQ Mail in China) running on STARTTLS-
+  on-cleartext ports inside their own ASN provide
+  jurisdiction-specific cover that's *less subject to the
+  RFC 8314 implicit-TLS migration trend* and addresses the
+  international-infrastructure-blocked problem directly.
+
+The bottom line: the catalog summary's "email is universal"
+framing is true at the level of *messages sent*, but the
+*wire-distinct STARTTLS-on-cleartext-port flow* is
+heterogeneous and increasingly concentrated on TCP/25
+server-to-server. Cover candidacy for client-facing
+circumvention is strongest on **TCP/587 with a real
+Postfix submission backing** in a Microsoft-365-reachable
+jurisdiction, or **TCP/143 with Dovecot IMAP backing** in
+a self-hosted-mail-friendly jurisdiction; the universal
+TCP/25 MTA-MTA cover is operationally restricted to
+server-to-server paths.
 
 ## Collateral Cost
 

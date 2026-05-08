@@ -14,12 +14,23 @@ HYBRID_EX) negotiates inline on the same TCP connection.
 This makes RDP wire-distinct from generic TLS (a TLS
 handshake at byte 0 is plain TLS; a TLS handshake at byte
 ~36 preceded by `03 00 ... E0 ... mstshash=...` is RDP).
-**Collateral cost is high**: RDP is the Microsoft enterprise
-admin path — Azure Virtual Desktop, Windows 365, Microsoft
-Dev Box, Windows Server RDS, every cloud Windows VM.
-**Note**: RD Gateway tunnels RDP inside HTTPS on TCP/443
-and subsumes to [`cover-tls-1-3`](cover-tls-1-3.md). This
-entry covers **native RDP on TCP/3389** specifically.
+**Collateral cost is high** for native RDP on TCP/3389:
+legacy on-prem Windows Server RDS, hosting providers'
+Windows VPS offerings, self-managed cloud Windows VMs not
+moved to Bastion services. **Note**: RD Gateway / Azure
+Bastion / AWS Systems Manager / Google Cloud IAP tunnel
+RDP inside HTTPS on TCP/443 and subsume to
+[`cover-tls-1-3`](cover-tls-1-3.md). This entry covers
+**native RDP on TCP/3389** specifically.
+
+**Caveat (see §Native RDP vs. RD Gateway / Bastion below):**
+the production majority of *modern* Microsoft enterprise
+RDP — Azure Virtual Desktop, Windows 365 Cloud PC,
+Microsoft Dev Box — uses Reverse Connect Transport over
+HTTPS to Azure URLs, NOT native TCP/3389. The wire-distinct
+3389 cover candidacy rides the legacy-on-prem-RDS +
+small-VPS-Windows long tail, not the dominant cloud-Windows
+admin flow. Choosing this cover means choosing that niche.
 
 ## Standardization
 
@@ -291,9 +302,104 @@ behind RD Gateway nowadays but with the native port still
 exposed.
 
 The cover-population on TCP/3389 is dominated by:
-Azure Windows VMs (cloud-VM admin), AWS Windows EC2 (same),
-on-prem Windows Server RDS, and self-hosted Windows
-desktops with RDP enabled.
+self-managed cloud Windows VMs (where admins haven't moved
+to Bastion services), legacy on-prem Windows Server RDS,
+hosting providers' Windows VPS customer admin paths
+(DigitalOcean, Linode, Vultr, hosted Iranian / Russian /
+Chinese providers), and self-hosted Windows desktops with
+RDP enabled.
+
+## Native RDP vs. RD Gateway / Bastion — the cover-population shape
+
+Critical nuance for cover candidacy: when the catalog summary
+says "RDP is the Microsoft enterprise admin path," it
+overstates how much *current* enterprise RDP traffic actually
+uses native TCP/3389. The dominant Microsoft cloud VDI
+products in 2026 are HTTPS-tunneled, not 3389-direct.
+
+Five structural pressures push real-world enterprise RDP
+deployment AWAY from native TCP/3389:
+
+1. **RDP brute-force as ransomware vector** — CISA, NCSC,
+   and Microsoft guidance for 5+ years has been "do not
+   expose RDP to the public Internet." Cloud providers
+   (AWS, Azure, GCP) now default-block inbound TCP/3389 in
+   security groups. Enterprise egress policies routinely
+   block outbound TCP/3389.
+2. **Azure Virtual Desktop / Windows 365 Cloud PC / Microsoft
+   Dev Box use Reverse Connect Transport over HTTPS** to
+   Azure URLs (`*.wvd.microsoft.com`,
+   `*.cloudpc.microsoft.com`). Clients **never** connect
+   directly to TCP/3389 — the entire RDP exchange is
+   tunneled inside HTTPS to Azure broker endpoints. This is
+   the flagship Microsoft cloud VDI pattern.
+3. **Cloud-VM admin migrations to Bastion services** — Azure
+   Bastion (RDP-over-HTTPS in browser), AWS Systems Manager
+   Session Manager, Google Cloud Identity-Aware Proxy. All
+   HTTPS-tunneled; no direct 3389 exposure.
+4. **Enterprise on-prem migrations to RD Gateway / RD Web
+   Access** — Microsoft has recommended RDP-over-HTTPS-on-443
+   via RD Gateway for ~10 years. Modern RDS deployments
+   typically front their session hosts with RD Gateway.
+5. **Microsoft 365 Cloud Trust / Conditional Access** —
+   modern Microsoft enterprise authentication paths require
+   tokens that don't transit native RDP cleanly; HTTPS-
+   tunneled paths are the easier integration point.
+
+Where native TCP/3389 survives:
+
+- **Hosting providers' Windows VPS** (DigitalOcean, Linode,
+  Vultr, hosted Iranian / Russian / Chinese cloud providers)
+  where customer admins still use direct RDP because
+  Bastion is a paid premium feature.
+- **Legacy on-prem Windows Server RDS** without RD Gateway —
+  smaller enterprises, hospital / education / government IT
+  that hasn't migrated.
+- **Self-managed cloud Windows VMs** where admins haven't
+  enabled Bastion / Session Manager / IAP.
+- **Internal corporate networks** (LAN-to-LAN RDP through
+  VPN) — but these aren't on the public Internet, so not
+  available as cover for an Internet-traversing
+  circumvention design.
+- **Internal IT / red-team / pentest tooling** that
+  intentionally uses direct RDP.
+
+Hard published ratios are sparse. Censys / Shodan show
+millions of IPv4 hosts listening on TCP/3389 — the *count*
+is large. But research from Sophos, Coveware, etc. has
+consistently shown most of those exposed endpoints are
+**legacy / unmanaged / actively-attacked by ransomware
+groups**, not active modern enterprise admin paths.
+
+Implications for cover candidacy:
+
+- A circumvention design on **native TCP/3389** rides the
+  legacy-VPS-Windows + small-enterprise-RDS long tail. The
+  cover-population is real but increasingly niche, and
+  destination-IP enumeration is more feasible than against
+  ubiquitous-TLS alternatives. Workable when the design's
+  destination IPs blend with hosting-provider Windows VPS
+  ranges (Linode / Vultr / domestic Iranian Windows hosts)
+  rather than enterprise cloud VDI ranges.
+- A circumvention design on **RD Gateway HTTPS** loses the
+  wire-distinct STARTTLS-prelude property — wire becomes
+  generic TLS on TCP/443, subsumes to
+  [`cover-tls-1-3`](cover-tls-1-3.md). What remains
+  distinguishable is the URI / Host header inside the TLS
+  tunnel (`*.wvd.microsoft.com` patterns, RDP RPC over
+  HTTPS endpoints), visible only to a TLS-decrypting
+  observer.
+- A **hybrid posture** — server listens on 3389 with
+  realistic xrdp + also exposes RD Gateway-shaped HTTPS on
+  443 — is plausible but operationally complex; doesn't
+  obviously beat picking one.
+
+The bottom line: the wire-distinctness argument for native
+RDP holds, but the "Microsoft enterprise admin" framing
+doesn't accurately describe the 2026 cover-population.
+Cover candidacy is strongest when destination IPs blend
+with the **hosting-provider Windows VPS + legacy-RDS long
+tail**, not the cloud VDI flagships.
 
 ## Collateral Cost
 
