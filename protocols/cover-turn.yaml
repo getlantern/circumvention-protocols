@@ -1,0 +1,55 @@
+id: cover-turn
+name: "TURN"
+kind: cover
+family: cover
+status: active
+category: real-time-media
+rfc: [8656, 6062, 6156, 7635, 8155, 8489, 8657, 5928, 5780]
+collateral_cost: high
+crypto_surface:
+  visible:
+    - "client IP + ephemeral source port → server IP + canonical TURN port (UDP/3478, TCP/3478 plaintext; UDP/5349 DTLS-wrapped, TCP/5349 TLS-wrapped — TURNS)"
+    - "**STUN magic cookie `0x2112A442`** at bytes 4-7 of every STUN-formatted message — the killer wire fingerprint. Fixed value, observable in plaintext on UDP/3478 and TCP/3478 even though TURN attributes themselves may carry encrypted payload bytes."
+    - "STUN message type / class field at bytes 0-1 (Allocate Request 0x0003 / Response 0x0103, Refresh 0x0004, CreatePermission 0x0008, Send 0x0016 indication, Data 0x0017 indication, ChannelBind 0x0009 etc.)"
+    - "STUN transaction ID (96 bits) — random per request, correlatable as a request/response pair"
+    - "STUN attributes — XOR-MAPPED-ADDRESS, USERNAME (cleartext), REALM, NONCE, MESSAGE-INTEGRITY, REQUESTED-TRANSPORT, LIFETIME, RESERVATION-TOKEN, CHANNEL-NUMBER, ERROR-CODE, FINGERPRINT (CRC-32 with magic constant `0x5354554e`)"
+    - "ChannelData framing on the steady state — 16-bit channel number `0x4000-0x7FFF` then 16-bit length then opaque data. The channel-number high bits (0b01) distinguish ChannelData from STUN messages (which start 0b00)."
+    - "Allocate / Refresh exchange shape — request, 401-with-NONCE, request-with-credentials, success — every TURN session begins with this distinctive two-round-trip negotiation"
+    - "On TCP/3478: 4-byte length-prefixed framing of STUN messages (RFC 8656 §2.1) — distinguishable from raw TCP"
+  encrypted:
+    - "(if transported over TURNS / TURN-over-TLS or TURN-over-DTLS) the entire STUN message and ChannelData stream — see [`cover-tls-1-3`](cover-tls-1-3.md), [`cover-dtls`](cover-dtls.md)"
+    - "MESSAGE-INTEGRITY HMAC value when present (computed over message but value itself is opaque random-looking bytes)"
+    - "DATA attribute payload bytes when the inner peer connection runs DTLS-SRTP / SRTP — the WebRTC media itself"
+common_implementations:
+  - {name: "coturn", vendor: "coturn project (originally Tailored Software)", scope: "the dominant open-source TURN server. Twilio's NTS reference, Jitsi Meet's bundled TURN, Matrix.org's bundled TURN, Nextcloud Talk, Slack Calls (until proprietary replacement), most self-hosted WebRTC deployments"}
+  - {name: "pion/turn", vendor: "Pion project", scope: "Go TURN client + server library; LiveKit, Daily.co components, multiple Go-native WebRTC stacks. Same parent project as pion/dtls — inherits a chunk of the same fingerprint-cluster lessons"}
+  - {name: "aiortc / aioice", vendor: "Jeremy Lainé", scope: "Python WebRTC stack — academic measurement, research deployments"}
+  - {name: "Twilio Network Traversal Service (NTS)", vendor: "Twilio (commercial)", scope: "the commercial TURN-as-a-service market leader; thousands of Twilio Video / Programmable Voice customers"}
+  - {name: "Xirsys", vendor: "Xirsys (commercial)", scope: "commercial TURN provider; multi-region anycast"}
+  - {name: "Vonage NTS", vendor: "Vonage (commercial)", scope: "commercial TURN behind Vonage Video / TokBox APIs"}
+  - {name: "Cloudflare Calls TURN", vendor: "Cloudflare", scope: "Cloudflare's WebRTC offering, free-tier TURN included in Calls"}
+  - {name: "Microsoft Teams TURN fleet", vendor: "Microsoft", scope: "global multi-region TURN behind Teams calling — proprietary stack"}
+  - {name: "Google Meet TURN fleet", vendor: "Google", scope: "global multi-region TURN behind Meet — proprietary"}
+  - {name: "Zoom relay nodes", vendor: "Zoom", scope: "Zoom's media-relay infrastructure — TURN-adjacent, not strictly RFC-compliant"}
+  - {name: "AWS Kinesis Video Streams (KVS) Signaling+TURN", vendor: "AWS", scope: "managed TURN within Kinesis WebRTC product"}
+upstream:
+  spec: https://www.rfc-editor.org/rfc/rfc8656
+  docs: https://datatracker.ietf.org/wg/tram/about/
+references: []
+internal_refs: []
+tags:
+  - turn
+  - stun
+  - webrtc-relay
+  - nat-traversal
+  - magic-cookie
+  - real-time-media
+  - port-3478
+  - port-5349
+  - turns
+  - ietf-standard
+license: "RFC standard (no license — IETF specification)"
+body_path: text/cover-turn.md
+used_as_cover_by: []
+summary: |
+  Traversal Using Relays around NAT (RFC 8656, Feb 2020 — obsoletes RFC 5766) is the WebRTC NAT-traversal fallback: when ICE direct-connect and STUN-port-prediction both fail, the call relays through a TURN server. **Wire-distinctness comes from the STUN message format that TURN uses for its control plane** — every STUN message carries `0x2112A442` as a fixed magic cookie at offset 4, and ChannelData frames on the steady state use the distinctive `0x4000-0x7FFF` channel-number range. This is a wholly different wire shape from generic UDP encrypted traffic; a censor cannot confuse plain TURN on UDP/3478 with QUIC, DTLS, or generic VPN. **And yet TURN is generally not blocked** because of its substrate role in WebRTC: the relay path carries ~10-20% of WebRTC sessions whose peers can't connect directly. Wholesale-block breaks Twilio Video, Vonage Video, every Cloudflare Calls customer, every video-conferencing vendor's hostile-NAT path. Common deployments: coturn (open-source dominant), pion/turn (Go), Twilio NTS, Xirsys, Vonage, Cloudflare Calls, Microsoft Teams fleet, Google Meet fleet. **Cover candidacy**: TURN is the rare protocol with strong wire fingerprint AND high collateral cost — fingerprintability doesn't matter when the censor can't afford the block. Catalog-relevant for circumvention designs that want a relayed-WebRTC channel where the cover *announces itself* as TURN cleartext on the wire and rides the cover-WebRTC collateral. The TURNS variants (UDP/5349, TCP/5349) subsume to [`cover-dtls`](cover-dtls.md) and [`cover-tls-1-3`](cover-tls-1-3.md) respectively.

@@ -1,0 +1,64 @@
+id: cover-starttls-mail
+name: "STARTTLS — SMTP / IMAP / POP3"
+kind: cover
+family: cover
+status: active
+category: mail
+rfc: [3207, 2595, 5321, 6409, 8314, 9051, 1939, 7817, 8461, 8689, 7672]
+collateral_cost: critical
+crypto_surface:
+  visible:
+    - "client IP + ephemeral source port → server IP + canonical mail port (TCP/25 SMTP relay, TCP/587 SMTP submission, TCP/143 IMAP, TCP/110 POP3 — all cleartext-then-STARTTLS-upgrade. Implicit-TLS siblings TCP/465 SMTPS, TCP/993 IMAPS, TCP/995 POP3S subsume to [`cover-tls-1-3`](cover-tls-1-3.md))"
+    - "**Cleartext ASCII banner** as the first server-to-client bytes. SMTP: `220 <hostname> ESMTP <software>\\r\\n`. IMAP: `* OK [CAPABILITY ...] <hostname> ... ready\\r\\n`. POP3: `+OK <hostname> POP3 server ready\\r\\n`. Each banner names the server software and version — reading the banner is sufficient identification."
+    - "Cleartext capability advertisement listing **STARTTLS** (SMTP / IMAP) or **STLS** (POP3) as supported"
+    - "Cleartext **STARTTLS** / **STLS** command sent from client"
+    - "Cleartext server response acknowledging TLS readiness: SMTP `220 Ready to start TLS\\r\\n`, IMAP `<tag> OK Begin TLS negotiation now\\r\\n`, POP3 `+OK Begin TLS negotiation\\r\\n`"
+    - "**TLS handshake follows on the same TCP connection** — ServerHello, cert chain, ClientHello fingerprint visible. The TLS handshake comes after the cleartext line-protocol prelude, not at byte 0 — distinct from implicit-TLS / cover-tls-1-3 wire shape."
+    - "(post-handshake) TLS-encrypted record sizes + timing"
+    - "TCP keepalive shape — IMAP IDLE sessions in particular can stay open for tens of minutes between activity"
+  encrypted:
+    - "(after STARTTLS / STLS upgrade — overwhelmingly the production pattern in 2026) the entire mail-protocol exchange — AUTH credentials, MAIL FROM / RCPT TO / DATA bodies, IMAP LOGIN / SELECT / FETCH / IDLE responses, POP3 USER / PASS / RETR responses, all message content, all attachments"
+    - "(with TLS server cert) the inner cert subject — readable in cert chain when ECH is not deployed (ECH for mail STARTTLS is a draft, not yet production)"
+common_implementations:
+  - {name: "Postfix", vendor: "Wietse Venema / IBM Research", scope: "the dominant open-source SMTP server. Linux distros default; runs ~30%+ of Internet-exposed SMTP MTAs"}
+  - {name: "Sendmail", vendor: "Sendmail consortium", scope: "legacy SMTP — still on Unix systems and some commercial mail appliances"}
+  - {name: "Exim", vendor: "Exim project (Univ. of Cambridge origin)", scope: "Debian default in some configurations; large self-hosted SMTP deployments. cPanel / WHM hosting bundles. ~50%+ of Linux-MTA installs in some surveys (cPanel-shaped)"}
+  - {name: "Microsoft Exchange Server / Exchange Online", vendor: "Microsoft", scope: "enterprise SMTP / IMAP / EWS. On-prem Exchange + Exchange Online (Microsoft 365); hundreds of millions of mailboxes"}
+  - {name: "Dovecot", vendor: "Dovecot project", scope: "the dominant open-source IMAP / POP3 server. Postfix + Dovecot is the canonical Linux mail-server stack"}
+  - {name: "Cyrus IMAP", vendor: "CMU Cyrus project", scope: "alternative IMAP server; large-scale deployments at universities + ISPs"}
+  - {name: "Courier-IMAP", vendor: "Sam Varshavchik", scope: "older alternative; smaller install base"}
+  - {name: "Gmail", vendor: "Google", scope: "the world's largest mail provider; ~1.8B accounts. Speaks SMTP / IMAP / POP3 STARTTLS on standard ports + implicit-TLS siblings"}
+  - {name: "Outlook.com / Microsoft 365 mail", vendor: "Microsoft", scope: "second-largest consumer mail; hundreds of millions of accounts. SMTP TCP/587 STARTTLS is the documented submission endpoint (smtp.office365.com)"}
+  - {name: "Apple iCloud Mail", vendor: "Apple", scope: "iCloud mailboxes; SMTP/IMAP STARTTLS public endpoints"}
+  - {name: "ProtonMail (SMTP/IMAP Bridge)", vendor: "Proton", scope: "the Bridge desktop app exposes local IMAP+SMTP STARTTLS endpoints to standard MUAs"}
+  - {name: "Mozilla Thunderbird", vendor: "Mozilla", scope: "the dominant open-source desktop MUA — connects to SMTP/IMAP/POP3 with STARTTLS"}
+  - {name: "Apple Mail (macOS / iOS)", vendor: "Apple", scope: "first-party MUA on every Mac / iPhone; SMTP/IMAP STARTTLS"}
+  - {name: "Microsoft Outlook (Windows / Mac / Mobile)", vendor: "Microsoft", scope: "first-party MUA across Microsoft platforms"}
+  - {name: "K-9 Mail / FairEmail (Android)", vendor: "K-9 / FairEmail projects", scope: "open-source Android MUAs"}
+upstream:
+  spec: https://www.rfc-editor.org/rfc/rfc3207
+  docs: https://datatracker.ietf.org/wg/uta/about/
+references: []
+internal_refs: []
+tags:
+  - smtp
+  - imap
+  - pop3
+  - starttls
+  - stls
+  - mail
+  - tcp25
+  - tcp587
+  - tcp143
+  - tcp110
+  - app-protocol
+  - mta-mta
+  - mta-mua
+  - opportunistic-tls
+  - critical-collateral-cost
+  - ietf-standard
+license: "RFC standards (no license — IETF specifications)"
+body_path: text/cover-starttls-mail.md
+used_as_cover_by: []
+summary: |
+  The mail STARTTLS family — SMTP (RFC 3207, Feb 2002), IMAP STARTTLS (RFC 2595, Jun 1999; refreshed in RFC 9051), and POP3 STLS (RFC 2595). One umbrella entry because all three share the same structural cover shape: a cleartext ASCII line-protocol prelude on a fixed port (TCP/25 SMTP relay, TCP/587 SMTP submission, TCP/143 IMAP, TCP/110 POP3), capability advertisement listing STARTTLS / STLS, client issues `STARTTLS` or `STLS`, server acks, then inline TLS handshake on the same TCP connection. **Wire-distinct from generic TLS** — TLS at byte 0 is plain TLS; TLS after a cleartext `220 ESMTP / * OK / +OK` banner is mail STARTTLS. **Critical collateral cost** — email is fundamental; no censor in 2026 wholesale-blocks SMTP / IMAP / POP3 ports. The implicit-TLS siblings (SMTPS TCP/465, IMAPS TCP/993, POP3S TCP/995) wire-subsume to [`cover-tls-1-3`](cover-tls-1-3.md); **this entry covers the cleartext-prelude variants only**. **Note on 2026 deployment trend**: RFC 8314 (Jan 2018) recommends implicit-TLS for new MUA deployments, and Outlook / Gmail / Apple Mail increasingly default to implicit-TLS for client submission. **However**, MTA-to-MTA SMTP on TCP/25 still **always** uses STARTTLS opportunistically (RFC 3207 + MTA-STS RFC 8461 + DANE RFC 7672), and Microsoft 365's documented submission endpoint `smtp.office365.com:587` still requires STARTTLS. The cover-population for the STARTTLS-pattern is *real and large* on TCP/25 + TCP/587 + TCP/143 STARTTLS-required configurations. Cover candidacy: **underutilized**. Like cover-rdp, mail STARTTLS gives a circumvention mimic a *different wire shape than plain TLS*, breaking detection that targets "TLS at byte 0" flows. The collateral cost is, if anything, higher than RDP — email is universal, RDP is enterprise.

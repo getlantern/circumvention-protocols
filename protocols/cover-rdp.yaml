@@ -1,0 +1,58 @@
+id: cover-rdp
+name: "RDP"
+kind: cover
+family: cover
+status: active
+category: app-protocol
+rfc: [905, 1006, 2126]
+collateral_cost: high
+crypto_surface:
+  visible:
+    - "client IP + ephemeral source port → server IP + TCP/3389 (overwhelmingly default; UDP/3389 for the RDP-UDP transport extension since Windows Server 2012)"
+    - "**TPKT version-3 header** as the very first 4 bytes of every TCP/3389 connection: `03 00 LEN_HI LEN_LO` (RFC 1006). The fixed `03 00` prefix is an unmistakable wire fingerprint."
+    - "**X.224 / ITU-T X.224 connection PDU** immediately after TPKT: LI (length indicator) | **TPDU type 0xE0 (ConnectionRequest)** | DST-REF | SRC-REF | class+option. The 0xE0 byte is the canonical native-RDP marker."
+    - "**RDP NEG REQ** structure inside the X.224 ConnectionRequest cookie (RDP 5.x+): `Cookie: mstshash=<username>\\r\\n` cleartext, then RDP_NEG_REQ TLV announcing `requestedProtocols` (PROTOCOL_RDP=0x0, PROTOCOL_SSL=0x1, PROTOCOL_HYBRID/CredSSP=0x2, PROTOCOL_HYBRID_EX=0x8). The `mstshash=` cookie is **plaintext on the wire** and identifies RDP unambiguously."
+    - "X.224 ConnectionConfirm response — TPDU type 0xD0 — with selectedProtocol echoing the chosen security layer"
+    - "(if PROTOCOL_RDP=0x0 selected — legacy unencrypted RDP) all subsequent bytes including MCS Connect Initial, Erect Domain, Attach User, Channel Join, plus full GUI updates"
+    - "(if PROTOCOL_SSL=0x1 / HYBRID=0x2 / HYBRID_EX=0x8 — modern RDP) **TLS handshake follows the X.224 prelude on the same TCP connection** — ServerHello cert chain, SNI when present, ClientHello fingerprint visible. The TLS handshake comes after the TPKT/X.224 prelude, not at byte 0."
+    - "On the modern path (SSL / HYBRID): the TLS-encrypted record sizes + timing on the steady state"
+    - "TCP keepalive shape — RDP sessions sustain over hours / days with periodic activity bursts"
+  encrypted:
+    - "(when PROTOCOL_SSL or HYBRID is selected, the dominant production path) the entire RDP application-layer exchange post-TLS handshake — MCS, security exchange, GCC conference, capability negotiation, virtual channels, GUI bitmap updates, audio redirection, clipboard sync, drive redirection, RemoteApp"
+    - "(when HYBRID / CredSSP is selected) the SPNEGO/Kerberos/NTLM authentication exchange — credentials never traverse cleartext on the modern path"
+    - "(when HYBRID_EX) additional TLS-pinned channel-binding tokens"
+common_implementations:
+  - {name: "Microsoft mstsc.exe", vendor: "Microsoft", scope: "the built-in Windows Remote Desktop Connection client; ships with every Windows 10 / 11 / Server install, hundreds of millions of seats"}
+  - {name: "Microsoft Remote Desktop (Mac / iOS / Android)", vendor: "Microsoft", scope: "first-party clients on non-Windows platforms"}
+  - {name: "Windows Server Remote Desktop Services (RDS)", vendor: "Microsoft", scope: "the server-side RDP terminal-server stack on Windows Server; used in every RDS / VDI deployment"}
+  - {name: "Azure Virtual Desktop (AVD)", vendor: "Microsoft", scope: "Azure-managed multi-session RDP; Microsoft's flagship cloud VDI"}
+  - {name: "Windows 365 Cloud PC", vendor: "Microsoft", scope: "cloud-hosted personal Windows desktops; RDP is the access protocol"}
+  - {name: "Microsoft Dev Box", vendor: "Microsoft", scope: "developer-focused cloud workstations; RDP-based access"}
+  - {name: "FreeRDP", vendor: "FreeRDP project", scope: "the dominant open-source RDP client + library; used by Remmina, GNOME-Boxes, KRDC, x2go variants, Devolutions Remote Desktop Manager (some versions), nearly every non-Microsoft RDP client of consequence"}
+  - {name: "xrdp", vendor: "xrdp project", scope: "open-source RDP server for Linux — the canonical way to expose a Linux desktop via RDP"}
+  - {name: "rdesktop", vendor: "rdesktop project", scope: "older open-source RDP client (predecessor to FreeRDP); still in some legacy deployments"}
+  - {name: "Apache Guacamole", vendor: "Apache Software Foundation", scope: "browser-based RDP / VNC / SSH gateway; many enterprises deploy it for RDP-over-HTTPS access (note: Guacamole proxies RDP on the backend, so the wire-to-RDP-server is still native RDP)"}
+  - {name: "Devolutions Remote Desktop Manager", vendor: "Devolutions", scope: "Windows admin / MSP RDP client suite"}
+  - {name: "AWS WorkSpaces (PCoIP / WSP / Native RDP)", vendor: "AWS", scope: "AWS managed VDI; some configurations use RDP, others PCoIP / WSP"}
+upstream:
+  spec: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpbcgr/
+  docs: https://learn.microsoft.com/en-us/azure/virtual-desktop/
+references: []
+internal_refs: []
+tags:
+  - rdp
+  - tcp3389
+  - tpkt
+  - x224
+  - mstshash
+  - starttls-pattern
+  - microsoft
+  - app-protocol
+  - vdi
+  - enterprise-admin
+  - remote-desktop
+license: "Microsoft Open Specifications Promise (MS-RDPBCGR series); ITU-T X.224 (open spec); RFC 1006 (open spec)"
+body_path: text/cover-rdp.md
+used_as_cover_by: []
+summary: |
+  Microsoft Remote Desktop Protocol — the native Windows-and-Azure remote-desktop protocol. Wire shape is **distinctive at byte 0** because of the mandatory TPKT version-3 header (`03 00 LEN_HI LEN_LO`, RFC 1006) followed by an X.224 / ITU-T X.224 ConnectionRequest PDU (TPDU type `0xE0`) carrying a cleartext `Cookie: mstshash=<username>\r\n` line. **RDP is a STARTTLS-pattern protocol**: the X.224 prelude is unencrypted and visible to any DPI, then a TLS handshake (or CredSSP / HYBRID_EX) negotiates inline on the same TCP/3389 connection if the chosen `selectedProtocol` is non-legacy. This makes RDP wire-distinct from generic TLS — a TLS handshake at byte 0 is plain TLS; a TLS handshake at byte ~36 preceded by `03 00 ... E0 ... mstshash=...` is RDP. **Collateral cost is high**: RDP is the Microsoft enterprise admin path. Wholesale-blocking TCP/3389 breaks Azure Virtual Desktop, Windows 365 Cloud PC, Microsoft Dev Box, Windows Server RDS, every AWS / Azure / GCP Windows VM admin connection, every enterprise bastion-host RDP, every helpdesk remote-support session — Microsoft enterprise customers worldwide. **Note**: this entry covers **native RDP on TCP/3389**. The increasingly-common **RD Gateway** path tunnels RDP inside HTTPS / WebSockets / RPC over TLS on TCP/443, which subsumes to [`cover-tls-1-3`](cover-tls-1-3.md). The wire-distinct cover candidacy here is specifically the on-3389 STARTTLS-shaped flow. **Cover candidacy**: underutilized. RDP-shaped circumvention designs are rare in the literature; the STARTTLS-pattern lens makes this a clean candidate for a tool that wants a different prelude shape than plain-TLS-at-byte-0.
