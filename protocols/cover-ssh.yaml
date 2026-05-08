@@ -1,0 +1,54 @@
+id: cover-ssh
+name: "SSH"
+kind: cover
+family: cover
+status: active
+category: app-protocol
+rfc: [4250, 4251, 4252, 4253, 4254, 4255, 4256, 8308, 8709, 8731, 8732, 9142]
+collateral_cost: high
+crypto_surface:
+  visible:
+    - "client IP + ephemeral source port → server IP + TCP/22 (overwhelmingly default; configurable; commonly relocated to 2222 / 443 / 8022)"
+    - "**plaintext banner exchange** as the first bytes in each direction: `SSH-2.0-<software_version>\\r\\n` (e.g. `SSH-2.0-OpenSSH_9.7p1 Ubuntu-2`). No DPI / no decryption required to identify SSH and the server's exact software version."
+    - "KEX_INIT message — algorithm-list negotiation. Cipher / KEX / HostKey / MAC / compression algorithm-name strings, all visible plaintext"
+    - "DH (or X25519 / sntrup761x25519) key exchange messages — magic numbers and field sizes distinguish algorithms"
+    - "Server's host-public-key fingerprint (visible in the KEX exchange before authentication)"
+    - "Encrypted-record sizes + timing once the handshake completes"
+  encrypted:
+    - "Everything past NEWKEYS — authentication exchange (publickey signatures, password-auth bytes), channel data (interactive shell, SCP/SFTP, port-forward bytes), service requests"
+    - "Username on `userauth` requests (DTLS / SSH 2.0 protect after NEWKEYS)"
+    - "`exec` command lines, `subsystem` requests"
+    - "Channel data multiplexed across `pty-req` / `shell` / `direct-tcpip` / `forwarded-tcpip` channel types"
+common_implementations:
+  - {name: "OpenSSH (server + client)", vendor: "OpenBSD project", scope: "the dominant implementation; default on every Linux, macOS, recent Windows (Microsoft OpenSSH-Server since Win10 1709), every cloud-provisioned VM, every Cisco IOS / Juniper / Arista network device's SSH server"}
+  - {name: "PuTTY", vendor: "Simon Tatham et al.", scope: "Windows interactive client (still widely used despite Microsoft's native OpenSSH)"}
+  - {name: "libssh", vendor: "libssh project", scope: "server + client library — curl, qemu, KDE / GNOME file managers' SFTP support"}
+  - {name: "libssh2", vendor: "libssh2 project", scope: "client library used by git's libgit2, by Mercurial, by some hosting-control-panel SSH integrations"}
+  - {name: "Tectia", vendor: "SSH Communications Security (commercial)", scope: "enterprise / regulated-industry deployments"}
+  - {name: "Bitvise SSH Server", vendor: "Bitvise (commercial)", scope: "Windows commercial server-side SSH"}
+  - {name: "wolfSSH", vendor: "wolfSSL", scope: "embedded / IoT"}
+  - {name: "AsyncSSH", vendor: "Ron Frederick", scope: "Python asyncio SSH for automation / orchestration"}
+  - {name: "go SSH (golang.org/x/crypto/ssh)", vendor: "Go project", scope: "Tailscale, Caddy admin, Hashicorp tooling, lots of orchestration code"}
+upstream:
+  spec: https://www.rfc-editor.org/rfc/rfc4253
+  docs: https://datatracker.ietf.org/wg/curdle/about/
+references: []
+internal_refs: []
+tags:
+  - ssh
+  - openssh
+  - tcp22
+  - app-protocol
+  - plaintext-banner
+  - dev-infrastructure
+  - high-collateral-cost
+  - ietf-standard
+  - curve25519
+  - chacha20-poly1305
+  - sntrup761
+  - post-quantum
+license: "RFC standard (no license — IETF specification)"
+body_path: text/cover-ssh.md
+used_as_cover_by: []
+summary: |
+  IETF SSH-2 protocol family (RFC 4250-4256, January 2006), refreshed by RFC 8308 / 8709 / 8731 / 8732 / 9142 across 2018-2022. **Wire-distinctness is unusually strong** — the protocol literally announces itself in plaintext via the `SSH-2.0-<software_version>` banner exchange as the very first bytes in each direction, no DPI required. **And yet SSH is virtually unblocked at the censor's port-22 layer** because of collateral cost: every Linux server, every cloud-provisioned VM, every developer's daily workflow (git push / scp / Ansible / VS Code Remote-SSH / Cursor / JetBrains Gateway), every network-device admin path runs over SSH. Wholesale-blocking port 22 breaks the **administration plane** of the modern Internet. This is the textbook case where wire-fingerprintability is high but censor-block-cost is also high — collateral freedom protecting a protocol that would otherwise be trivially identified. Notable cryptographic state in 2026: post-quantum hybrid key exchange (`sntrup761x25519-sha512@openssh.com`) is OpenSSH's default since 9.0 (April 2022) and the deployed cover-population standard. Common circumvention covers ride SSH already (Psiphon's OSSH wraps an obfuscation layer around SSH; SSH-on-port-443 is a long-standing manual evasion). Catalog-relevant for new designs because the post-quantum KEX is one of the cleanest "this is what real OpenSSH on the wire looks like in 2026" anchors.
