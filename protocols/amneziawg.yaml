@@ -1,0 +1,33 @@
+id: amneziawg
+name: "AmneziaWG (AWG 2.0)"
+family: wireguard
+status: active
+languages: [go, c]
+upstream:
+  repo: https://github.com/amnezia-vpn/amneziawg-go
+  docs: https://github.com/amnezia-vpn/amneziawg-go/blob/master/README.md
+implementations:
+  - {family: wireguard, repo: github.com/amnezia-vpn/amneziawg-go, notes: "userspace Go implementation, fork of wireguard-go. Active master with AWG 2.0 features (ranged H1-H4, S3/S4 padding, refined junk-packet processing)"}
+  - {family: wireguard, repo: github.com/amnezia-vpn/amneziawg-linux-kernel-module, notes: "Linux kernel module — same protocol, kernel-fast-path"}
+  - {family: wireguard, repo: github.com/amnezia-vpn/amneziawg-tools, notes: "wg(8)-equivalent CLI for AmneziaWG (awg / awg-quick)"}
+  - {family: wireguard, repo: github.com/amnezia-vpn/amneziawg-android, notes: "Android client"}
+  - {family: wireguard, repo: github.com/amnezia-vpn/amneziawg-windows, notes: "Windows client"}
+  - {family: wireguard, repo: github.com/amnezia-vpn/amneziawg-apple, notes: "macOS / iOS"}
+references: []
+internal_refs: []
+tags:
+  - wireguard-fork
+  - awg-2-0
+  - junk-packets
+  - configurable-message-headers
+  - configurable-padding
+  - signature-packets
+  - tag-dsl
+  - dpi-evasion
+  - udp
+  - curve25519
+  - chacha20-poly1305
+license: MIT
+body_path: text/amneziawg.md
+summary: |
+  WireGuard with configurable obfuscation — same Curve25519 + Noise IKpsk2 + ChaCha20-Poly1305 cryptographic core, but with several knobs that defeat WireGuard's distinctive packet signatures. The **AWG 2.0 release** (commit f654220, Sep 2025) is the current generation and adds: **ranged message-type "magic headers"** (H1-H4 take a `start-end` range instead of a single value, so successive handshakes vary), **S3/S4 padding** (cookie and transport-message paddings, previously only S1/S2 for the two handshake messages), and refined junk-packet processing. Plus the existing AWG 1.5 features carry forward: **junk packets** (Jc count of random-content packets sent before each handshake, sized in [Jmin, Jmax]) and **custom signature packets** (I1-I5; mini-DSL of byte-tags `<b 0xHEX>` static, `<r N>` random, `<rd N>` random digits, `<rc N>` random alpha, `<t>` 4-byte UNIX timestamp, with newer `<d>`, `<ds>`, `<dz>` data tags). All knobs are deployment-configured; both endpoints don't have to specify the same values for junk/signature packets, but H/S/handshake-shaping params do need to match. Underneath all of this it's still real WireGuard — every existing wireguard-go advantage (small attack surface, clean Noise crypto, tested kernel module) carries forward.

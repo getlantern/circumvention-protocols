@@ -1,0 +1,29 @@
+id: trojan
+name: "Trojan"
+family: other
+status: active
+languages: [c++, go]
+upstream:
+  repo: https://github.com/trojan-gfw/trojan
+  spec: https://trojan-gfw.github.io/trojan/protocol
+  docs: https://trojan-gfw.github.io/trojan/
+implementations:
+  - {family: other, repo: github.com/trojan-gfw/trojan, notes: "canonical C++ implementation; the original. Boost.Asio + OpenSSL. Server runs as an HTTPS-shaped TLS terminator with optional MySQL-backed user auth."}
+  - {family: other, repo: github.com/p4gefau1t/trojan-go, notes: "Go reimplementation; adds multiplexing, routing, CDN-relay, Shadowsocks-style obfuscation plugin. More-deployed in 2026 than the original."}
+  - {family: xray, repo: github.com/XTLS/Xray-core, notes: "Trojan inbound + outbound; one of the inner protocols Xray's REALITY transport can carry"}
+  - {family: sing-box, repo: github.com/sagernet/sing-box, notes: "Trojan inbound + outbound at protocol/trojan/"}
+references: []
+internal_refs: []
+tags:
+  - tls-mimicry
+  - real-tls-terminator
+  - sha224-password-auth
+  - http-fallback-on-failure
+  - look-like-https
+  - active-probe-resistance
+  - operator-owns-cert
+  - composes-with-cdn
+license: GPLv3
+body_path: text/trojan.md
+summary: |
+  TLS-tunneled proxy with passwords. The trojan server runs as a real HTTPS server (operator-owned TLS cert, optional nginx-style fallback for plain HTTP); a trojan client opens a real TLS 1.2/1.3 handshake to it and then sends `[hex(SHA224(password))] CRLF [SOCKS5-style request: CMD/ATYP/DST.ADDR/DST.PORT] CRLF [Payload]` as the first encrypted bytes. If the SHA224 hash matches a configured user, the server tunnels to the requested target; if it doesn't (a probe, a misdirected browser), the server **transparently TCP-proxies the rest of the TLS-decrypted bytes to a configured fallback upstream** — by default `127.0.0.1:80`, which is typically a real HTTP server hosted alongside. From the censor's perspective the IP either serves a real website (probe path) or carries arbitrary HTTPS bytes (auth path); there's no protocol-distinguishable "this is a Trojan server" response. Different from REALITY's relay-by-default approach: in REALITY the proxy doesn't have a real cert at all and forwards the whole handshake; in Trojan the proxy operator owns the cert and only the post-handshake bytes are conditionally forwarded. UDP support via length-prefixed framing inside TLS records.
