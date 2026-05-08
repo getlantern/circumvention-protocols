@@ -2,20 +2,26 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://getlantern.org/circumvention-protocols/protocol.schema.json",
   "title": "CircumventionProtocol",
-  "description": "A deployed censorship-circumvention protocol — distilled metadata + a markdown body file.",
+  "description": "A deployed censorship-circumvention protocol or a dominant-Internet cover protocol — distilled metadata + a markdown body file.",
   "type": "object",
-  "required": ["id", "name", "family", "status", "body_path", "summary"],
+  "required": ["id", "name", "kind", "body_path", "summary"],
   "additionalProperties": false,
   "properties": {
     "id": {
       "type": "string",
-      "description": "Stable slug. Lowercase letters, digits, dashes. Convention: <wire-protocol-name>[-<variant>].",
+      "description": "Stable slug. Lowercase letters, digits, dashes. Convention for circumvention: <wire-protocol-name>[-<variant>]. Convention for cover entries: cover-<protocol-slug>.",
       "pattern": "^[a-z0-9][a-z0-9-]*$"
     },
     "name": { "type": "string", "minLength": 1 },
+    "kind": {
+      "type": "string",
+      "description": "circumvention = a circumvention tool / wire protocol; cover = a dominant Internet protocol that circumvention tools may mimic to gain collateral-freedom protection.",
+      "enum": ["circumvention", "cover"],
+      "default": "circumvention"
+    },
     "family": {
       "type": "string",
-      "description": "Originating / canonical implementation family.",
+      "description": "For circumvention entries: originating / canonical implementation family. For cover entries: typically 'cover'.",
       "enum": [
         "lantern",
         "sing-box",
@@ -26,12 +32,13 @@
         "tor-pt",
         "wireguard",
         "openvpn",
+        "cover",
         "other"
       ]
     },
     "status": {
       "type": "string",
-      "description": "Current operational status.",
+      "description": "Current operational status. Cover entries are virtually always 'active'.",
       "enum": [
         "active",
         "deprecated",
@@ -41,8 +48,7 @@
     },
     "languages": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "Implementation languages (e.g. go, rust, c)."
+      "items": { "type": "string" }
     },
     "upstream": {
       "type": "object",
@@ -55,7 +61,7 @@
     },
     "implementations": {
       "type": "array",
-      "description": "Other repos shipping the same wire protocol.",
+      "description": "Other repos shipping the same wire protocol (circumvention) or major real implementations (cover).",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -85,12 +91,66 @@
     "license": { "type": "string" },
     "body_path": {
       "type": "string",
-      "description": "Repo-relative path to the markdown body.",
       "pattern": "^text/.+\\.md$"
     },
-    "summary": {
+    "summary": { "type": "string" },
+
+    "rfc": {
+      "type": "array",
+      "description": "RFC numbers that standardize this protocol (cover entries; sometimes useful on circumvention entries too).",
+      "items": { "type": "integer" }
+    },
+    "category": {
       "type": "string",
-      "description": "One-paragraph summary surfaced by list / search hits."
+      "description": "Sub-classifier for cover entries.",
+      "enum": [
+        "transport-encryption",
+        "app-protocol",
+        "real-time-media",
+        "infra",
+        "mail",
+        "dev",
+        "messaging",
+        "other"
+      ]
+    },
+    "collateral_cost": {
+      "type": "string",
+      "description": "Qualitative score of how disruptive a wholesale block of this protocol would be for the censor's economy / society.",
+      "enum": ["critical", "high", "medium", "low"]
+    },
+    "crypto_surface": {
+      "type": "object",
+      "description": "What a passive observer can vs. cannot see when this protocol is on the wire.",
+      "additionalProperties": false,
+      "properties": {
+        "visible":   { "type": "array", "items": { "type": "string" } },
+        "encrypted": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "common_implementations": {
+      "type": "array",
+      "description": "Major real implementations (browsers, OS clients, server stacks). Informs JA3/JA4 fingerprint diversity available.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name":   { "type": "string" },
+          "vendor": { "type": "string" },
+          "scope":  { "type": "string" }
+        }
+      }
+    },
+    "mimics": {
+      "type": "array",
+      "description": "(circumvention entries) Cover-protocol IDs in this catalog that the protocol mimics or rides over.",
+      "items": { "type": "string" }
+    },
+    "used_as_cover_by": {
+      "type": "array",
+      "description": "(cover entries) Circumvention-protocol IDs in this catalog that mimic / ride over this cover.",
+      "items": { "type": "string" }
     }
   }
 }

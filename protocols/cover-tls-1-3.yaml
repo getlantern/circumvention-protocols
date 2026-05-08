@@ -1,0 +1,52 @@
+id: cover-tls-1-3
+name: "TLS 1.3"
+kind: cover
+family: cover
+status: active
+category: transport-encryption
+rfc: [8446, 8447, 8448, 8449, 8470, 8773, 8879]
+collateral_cost: critical
+crypto_surface:
+  visible:
+    - "client IP + port → server IP + port"
+    - "TLS record header (content type, version, length) per record"
+    - "ClientHello — version, random, session_id, cipher_suites, compression, extensions (SNI is usually visible here unless ECH is in use)"
+    - "ServerHello — selected version + cipher suite, server_random, session_id_echo, key_share"
+    - "Server cert chain (without ECH) — length-prefixed, plaintext"
+    - "ALPN value (without ECH)"
+    - "Application-data record sizes + timing"
+  encrypted:
+    - "Everything in EncryptedExtensions onward"
+    - "Certificate (with ECH; the inner ClientHello's SNI / ALPN / cert)"
+    - "CertificateVerify, Finished, NewSessionTicket"
+    - "Application-data record contents"
+common_implementations:
+  - {name: "BoringSSL", vendor: "Google", scope: "Chrome, Android, gRPC, many Google services"}
+  - {name: "NSS", vendor: "Mozilla", scope: "Firefox"}
+  - {name: "Schannel", vendor: "Microsoft", scope: "Windows TLS stack — Edge, IE, Office, Windows TLS clients"}
+  - {name: "Secure Transport / Network.framework", vendor: "Apple", scope: "Safari, macOS / iOS system TLS"}
+  - {name: "OpenSSL", vendor: "OpenSSL Foundation", scope: "the de-facto Linux server stack — nginx, HAProxy, OpenSSH, OpenVPN"}
+  - {name: "rustls", vendor: "Rustls / ISRG", scope: "Cloudflare, growing as Go/Rust server-side replacement for OpenSSL"}
+  - {name: "Go crypto/tls", vendor: "Go Project", scope: "Caddy, most Go HTTP servers, sing-box / lantern-box on the proxy side"}
+  - {name: "Java JSSE", vendor: "OpenJDK / vendor JDKs", scope: "Java application servers, Android system-side"}
+upstream:
+  spec: https://www.rfc-editor.org/rfc/rfc8446
+  docs: https://datatracker.ietf.org/wg/tls/about/
+references: []
+internal_refs: []
+tags:
+  - tls
+  - tls13
+  - transport-encryption
+  - https
+  - sni-extraction-target
+  - ja3-ja4
+  - high-collateral-cost
+  - critical-infrastructure
+  - ietf-standard
+  - ech
+license: "RFC standard (no license — IETF specification)"
+body_path: text/cover-tls-1-3.md
+used_as_cover_by: []
+summary: |
+  The IETF transport-encryption standard that virtually all of HTTPS, encrypted DNS, modern email, and a large fraction of UDP-based protocols (via DTLS / QUIC) ride on. RFC 8446 (Aug 2018) is the core, with maintenance updates through RFC 8449 (record-size-limit), 8470 (early-data semantics), 8773 (raw public keys), 8879 (compression certificates), and the in-progress ECH (Encrypted Client Hello) draft. Wholesale blocking is essentially equivalent to disabling the modern Internet — banking, e-commerce, government services, supply-chain APIs, employee remote access, software updates all break. Censors therefore attack TLS surgically: SNI extraction (USENIX Sec 2025), JA3/JA4 fingerprinting, fully-encrypted-traffic detection of post-handshake records, certificate-CA profiling. The visible surface that drives all of this is the **first packet in the client→server direction** (the unencrypted ClientHello), which is also the first packet most circumvention designs disguise. Encryption surface widens significantly with ECH deployed — the inner ClientHello's SNI + ALPN + cert chain become opaque — but ECH is still in partial deployment as of 2026.

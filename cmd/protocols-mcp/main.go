@@ -48,12 +48,27 @@ type Upstream struct {
 	Spec string `yaml:"spec,omitempty" json:"spec,omitempty"`
 }
 
-// Protocol mirrors schema/protocol.schema.json.
+// CryptoSurface is the visible-vs-encrypted breakdown for a cover protocol.
+type CryptoSurface struct {
+	Visible   []string `yaml:"visible,omitempty" json:"visible,omitempty"`
+	Encrypted []string `yaml:"encrypted,omitempty" json:"encrypted,omitempty"`
+}
+
+// CommonImplementation is a real-world implementation of a cover protocol.
+type CommonImplementation struct {
+	Name   string `yaml:"name" json:"name"`
+	Vendor string `yaml:"vendor,omitempty" json:"vendor,omitempty"`
+	Scope  string `yaml:"scope,omitempty" json:"scope,omitempty"`
+}
+
+// Protocol mirrors schema/protocol.schema.json. Holds both circumvention and
+// cover-protocol entries, distinguished by Kind.
 type Protocol struct {
 	ID              string           `yaml:"id" json:"id"`
 	Name            string           `yaml:"name" json:"name"`
-	Family          string           `yaml:"family" json:"family"`
-	Status          string           `yaml:"status" json:"status"`
+	Kind            string           `yaml:"kind,omitempty" json:"kind"`
+	Family          string           `yaml:"family,omitempty" json:"family,omitempty"`
+	Status          string           `yaml:"status,omitempty" json:"status,omitempty"`
 	Languages       []string         `yaml:"languages,omitempty" json:"languages,omitempty"`
 	Upstream        *Upstream        `yaml:"upstream,omitempty" json:"upstream,omitempty"`
 	Implementations []Implementation `yaml:"implementations,omitempty" json:"implementations,omitempty"`
@@ -63,6 +78,17 @@ type Protocol struct {
 	License         string           `yaml:"license,omitempty" json:"license,omitempty"`
 	BodyPath        string           `yaml:"body_path" json:"body_path"`
 	Summary         string           `yaml:"summary" json:"summary"`
+
+	// Cover-entry-specific fields.
+	RFC                   []int                  `yaml:"rfc,omitempty" json:"rfc,omitempty"`
+	Category              string                 `yaml:"category,omitempty" json:"category,omitempty"`
+	CollateralCost        string                 `yaml:"collateral_cost,omitempty" json:"collateral_cost,omitempty"`
+	CryptoSurface         *CryptoSurface         `yaml:"crypto_surface,omitempty" json:"crypto_surface,omitempty"`
+	CommonImplementations []CommonImplementation `yaml:"common_implementations,omitempty" json:"common_implementations,omitempty"`
+	UsedAsCoverBy         []string               `yaml:"used_as_cover_by,omitempty" json:"used_as_cover_by,omitempty"`
+
+	// Circumvention-entry-specific field: which cover protocols this mimics.
+	Mimics []string `yaml:"mimics,omitempty" json:"mimics,omitempty"`
 
 	// Filled by load(); not in YAML.
 	Body string `yaml:"-" json:"-"`
@@ -261,15 +287,16 @@ type tool struct {
 var tools = []tool{
 	{
 		Name: "search_protocols",
-		Description: "Full-text search over the catalog of deployed circumvention protocols (sing-box, Xray, V2Ray, " +
-			"Lantern, Psiphon, Outline, Tor pluggable transports, plus hand-curated additions). Returns ranked " +
-			"protocols with name + summary + a body snippet. Use this when designing a protocol or analyzing a " +
-			"blocking event to ground reasoning in what's actually been tried.",
+		Description: "Full-text search over the catalog. The catalog holds two kinds of entries: deployed " +
+			"CIRCUMVENTION protocols (sing-box, Xray, V2Ray, Lantern, Psiphon, Outline, Tor pluggable transports, ...) " +
+			"and dominant-Internet COVER protocols (TLS, QUIC, DoH, WebRTC, etc.) that circumvention designs may mimic " +
+			"to gain collateral-freedom protection. Use the kind filter to restrict to one or the other; default returns both.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"query":  map[string]any{"type": "string", "description": "FTS5 query: bare words or phrases. Examples: 'tls mimicry probe resistance', '\"role reversal\"', 'quic salamander'."},
-				"family": map[string]any{"type": "string", "description": "Restrict to one originating family (lantern / sing-box / xray / v2ray / psiphon / outline / tor-pt / wireguard / openvpn / other)."},
+				"kind":   map[string]any{"type": "string", "description": "Restrict to one entry kind: 'circumvention' or 'cover'."},
+				"family": map[string]any{"type": "string", "description": "Restrict to one originating family (lantern / sing-box / xray / v2ray / psiphon / outline / tor-pt / wireguard / openvpn / cover / other)."},
 				"status": map[string]any{"type": "string", "description": "Restrict to one status (active / deprecated / research-only / blocked-broadly)."},
 				"tag":    map[string]any{"type": "string", "description": "Restrict to protocols carrying this tag."},
 				"limit":  map[string]any{"type": "integer", "description": "Max hits (default 20)."},
@@ -291,10 +318,11 @@ var tools = []tool{
 	},
 	{
 		Name:        "list_protocols",
-		Description: "List protocols (metadata only). Filter by family / status / tag.",
+		Description: "List protocols (metadata only). Filter by kind / family / status / tag. Default returns both circumvention and cover entries.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
+				"kind":   map[string]any{"type": "string", "description": "'circumvention' or 'cover'"},
 				"family": map[string]any{"type": "string"},
 				"status": map[string]any{"type": "string"},
 				"tag":    map[string]any{"type": "string"},
@@ -353,6 +381,7 @@ func (s *store) callTool(name string, raw json.RawMessage) (string, error) {
 func (s *store) toolSearch(raw json.RawMessage) (string, error) {
 	var args struct {
 		Query  string `json:"query"`
+		Kind   string `json:"kind"`
 		Family string `json:"family"`
 		Status string `json:"status"`
 		Tag    string `json:"tag"`
@@ -384,8 +413,9 @@ func (s *store) toolSearch(raw json.RawMessage) (string, error) {
 	type hit struct {
 		ID      string   `json:"id"`
 		Name    string   `json:"name"`
-		Family  string   `json:"family"`
-		Status  string   `json:"status"`
+		Kind    string   `json:"kind"`
+		Family  string   `json:"family,omitempty"`
+		Status  string   `json:"status,omitempty"`
 		Tags    []string `json:"tags,omitempty"`
 		Summary string   `json:"summary"`
 		Snippet string   `json:"snippet"`
@@ -401,6 +431,9 @@ func (s *store) toolSearch(raw json.RawMessage) (string, error) {
 		if !ok {
 			continue
 		}
+		if args.Kind != "" && protoKind(p) != args.Kind {
+			continue
+		}
 		if args.Family != "" && p.Family != args.Family {
 			continue
 		}
@@ -411,7 +444,7 @@ func (s *store) toolSearch(raw json.RawMessage) (string, error) {
 			continue
 		}
 		out = append(out, hit{
-			ID: p.ID, Name: p.Name, Family: p.Family, Status: p.Status,
+			ID: p.ID, Name: p.Name, Kind: protoKind(p), Family: p.Family, Status: p.Status,
 			Tags: p.Tags, Summary: p.Summary, Snippet: snip,
 		})
 		if len(out) >= args.Limit {
@@ -419,6 +452,15 @@ func (s *store) toolSearch(raw json.RawMessage) (string, error) {
 		}
 	}
 	return jsonString(out)
+}
+
+// protoKind returns the entry kind, defaulting to "circumvention" for entries
+// that pre-date the kind field.
+func protoKind(p *Protocol) string {
+	if p.Kind == "" {
+		return "circumvention"
+	}
+	return p.Kind
 }
 
 func (s *store) toolGet(raw json.RawMessage) (string, error) {
@@ -438,19 +480,27 @@ func (s *store) toolGet(raw json.RawMessage) (string, error) {
 		include = *args.IncludeBody
 	}
 	out := map[string]any{
-		"id":               p.ID,
-		"name":             p.Name,
-		"family":           p.Family,
-		"status":           p.Status,
-		"languages":        p.Languages,
-		"upstream":         p.Upstream,
-		"implementations":  p.Implementations,
-		"references":       p.References,
-		"internal_refs":    p.InternalRefs,
-		"tags":             p.Tags,
-		"license":          p.License,
-		"body_path":        p.BodyPath,
-		"summary":          p.Summary,
+		"id":                     p.ID,
+		"name":                   p.Name,
+		"kind":                   protoKind(p),
+		"family":                 p.Family,
+		"status":                 p.Status,
+		"languages":              p.Languages,
+		"upstream":               p.Upstream,
+		"implementations":        p.Implementations,
+		"references":             p.References,
+		"internal_refs":          p.InternalRefs,
+		"tags":                   p.Tags,
+		"license":                p.License,
+		"body_path":              p.BodyPath,
+		"summary":                p.Summary,
+		"rfc":                    p.RFC,
+		"category":               p.Category,
+		"collateral_cost":        p.CollateralCost,
+		"crypto_surface":         p.CryptoSurface,
+		"common_implementations": p.CommonImplementations,
+		"used_as_cover_by":       p.UsedAsCoverBy,
+		"mimics":                 p.Mimics,
 	}
 	if include {
 		out["body"] = p.Body
@@ -460,6 +510,7 @@ func (s *store) toolGet(raw json.RawMessage) (string, error) {
 
 func (s *store) toolList(raw json.RawMessage) (string, error) {
 	var args struct {
+		Kind   string `json:"kind"`
 		Family string `json:"family"`
 		Status string `json:"status"`
 		Tag    string `json:"tag"`
@@ -470,15 +521,21 @@ func (s *store) toolList(raw json.RawMessage) (string, error) {
 		}
 	}
 	type row struct {
-		ID      string   `json:"id"`
-		Name    string   `json:"name"`
-		Family  string   `json:"family"`
-		Status  string   `json:"status"`
-		Tags    []string `json:"tags,omitempty"`
-		Summary string   `json:"summary"`
+		ID             string   `json:"id"`
+		Name           string   `json:"name"`
+		Kind           string   `json:"kind"`
+		Family         string   `json:"family,omitempty"`
+		Status         string   `json:"status,omitempty"`
+		Category       string   `json:"category,omitempty"`
+		CollateralCost string   `json:"collateral_cost,omitempty"`
+		Tags           []string `json:"tags,omitempty"`
+		Summary        string   `json:"summary"`
 	}
 	out := []row{}
 	for _, p := range s.protos {
+		if args.Kind != "" && protoKind(p) != args.Kind {
+			continue
+		}
 		if args.Family != "" && p.Family != args.Family {
 			continue
 		}
@@ -489,11 +546,16 @@ func (s *store) toolList(raw json.RawMessage) (string, error) {
 			continue
 		}
 		out = append(out, row{
-			ID: p.ID, Name: p.Name, Family: p.Family, Status: p.Status,
+			ID: p.ID, Name: p.Name, Kind: protoKind(p),
+			Family: p.Family, Status: p.Status,
+			Category: p.Category, CollateralCost: p.CollateralCost,
 			Tags: p.Tags, Summary: p.Summary,
 		})
 	}
 	sort.Slice(out, func(i, j int) bool {
+		if out[i].Kind != out[j].Kind {
+			return out[i].Kind < out[j].Kind
+		}
 		if out[i].Family != out[j].Family {
 			return out[i].Family < out[j].Family
 		}
