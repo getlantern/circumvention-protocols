@@ -1,0 +1,30 @@
+id: psiphon-conjure-ossh
+name: "Psiphon Conjure-OSSH"
+family: psiphon
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/Psiphon-Labs/psiphon-tunnel-core
+  docs: https://github.com/refraction-networking/conjure/wiki
+implementations:
+  - {family: psiphon, repo: github.com/Psiphon-Labs/psiphon-tunnel-core, notes: "psiphon-tunnel-core integrates gotapdance as the Conjure client library, then runs OSSH inside the Conjure tunnel. Sub-transport choice (Min/Prefix/DTLS) selected per-region by Psiphon tactics."}
+  - {family: other, repo: github.com/refraction-networking/conjure, notes: "the Refraction Networking station code; Conjure stations don't know they're carrying Psiphon — OSSH-as-payload is opaque to the station"}
+  - {family: other, repo: github.com/refraction-networking/gotapdance, notes: "Psiphon's Conjure client side is gotapdance"}
+references:
+  - 2019-frolov-conjure
+  - 2025-alaraj-iran-refraction
+internal_refs: []
+tags:
+  - refraction-networking
+  - phantom-ip
+  - decoy-routing
+  - psiphon-protocol
+  - obfuscated-ssh-inside-conjure
+  - min-transport
+  - prefix-transport
+  - dtls-transport
+  - composite-protocol
+license: GPL-3.0
+body_path: text/psiphon-conjure-ossh.md
+summary: |
+  Composite protocol: Psiphon's OSSH (the RC4-obfuscated SSH layer) carried as the payload of a Conjure refraction-networking tunnel. The client uses gotapdance (the Refraction Networking client library) to register with a Conjure station, opens a TCP/UDP connection to a station-controlled phantom IP, and negotiates a Conjure transport — one of `Min-OSSH`, `Prefix-OSSH`, or `DTLS-OSSH` (per `protocol.go`'s `CONJURE_TRANSPORT_*` constants). Inside the Conjure tunnel, the bytes are bare OSSH preamble + SSH session. The station DNATs the matched flow to its local handler and proxies to a Psiphon server. The combined protocol gets Conjure's IP-doesn't-exist probe-resistance plus Psiphon's SSH key-exchange and session crypto. Distinct from `psiphon-inproxy` (WebRTC P2P 1st hop) and `psiphon-tls-ossh` (real-TLS cover with HMAC-in-client_random auth) — Conjure-OSSH is the Refraction-Networking-flavored option in Psiphon's catalog.

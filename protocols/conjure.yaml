@@ -1,0 +1,32 @@
+id: conjure
+name: "Conjure (Refraction Networking)"
+family: other
+status: active
+languages: [go, rust, c]
+upstream:
+  repo: https://github.com/refraction-networking/conjure
+  spec: https://jhalderm.com/pub/papers/conjure-ccs19.pdf
+  docs: https://refraction.network
+implementations:
+  - {family: other, repo: github.com/refraction-networking/conjure, notes: "canonical Conjure station code (Go + Rust + C); runs at ISP-cooperating routers and intercepts TLS flows tagged for refraction"}
+  - {family: other, repo: github.com/refraction-networking/gotapdance, notes: "client library; pure-Go implementation that speaks both Conjure and the older TapDance protocol"}
+  - {family: psiphon, repo: github.com/Psiphon-Labs/psiphon-tunnel-core, notes: "psiphon-conjure-ossh — uses Conjure as a delivery mechanism for OSSH"}
+references:
+  - 2019-frolov-conjure
+  - 2025-alaraj-iran-refraction
+internal_refs: []
+tags:
+  - refraction-networking
+  - decoy-routing
+  - isp-cooperation
+  - phantom-ip
+  - station-router-deployment
+  - tagged-flow-detection
+  - dnat-redirection
+  - pf-ring
+  - multiple-registration-channels
+  - multiple-transports
+license: Apache-2.0
+body_path: text/conjure.md
+summary: |
+  Refraction-networking station code: instead of running circumvention proxies at fixed endpoint IPs, Conjure deploys "stations" at backbone routers of cooperating ISPs. A client that wants to use Conjure connects to a **phantom IP** — a randomly chosen IP inside a subnet the station controls but doesn't actually serve — with a special TCP-level "tag" the station detects passively (PF_RING zero-copy capture). The station DNAT-redirects the matched flow to a local handler that speaks the negotiated transport protocol, while flows to the same phantom IP without the tag are silently dropped (they look unrouted to the censor). Because the proxy doesn't have a fixed IP — every connection uses a different randomly-chosen phantom — the censor can't enumerate or blocklist proxy endpoints; blocking would require blocking entire ISP-controlled subnets. Multiple **registration channels** (decoy-registrar, DNS-registrar) tell the station to expect a particular client; multiple **transport protocols** (Min, Obfs4, Prefix, DTLS) are wrappers the client and station agree on for the post-tag bytes. Backed by ACM CCS 2019 paper (`2019-frolov-conjure`); the underlying technique is the Refraction Networking research line that started with TapDance (USENIX 2014).

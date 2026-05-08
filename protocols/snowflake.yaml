@@ -1,0 +1,29 @@
+id: snowflake
+name: "Snowflake"
+family: tor-pt
+status: active
+languages: [go, javascript]
+upstream:
+  repo: https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake
+  spec: https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/blob/main/doc/broker-spec.txt
+  docs: https://snowflake.torproject.org/
+implementations:
+  - {family: tor-pt, repo: gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake, notes: "canonical Tor Project implementation. Pure Go for client/proxy/broker; web-extension proxy is a separate JS repo (snowflake-webext)."}
+  - {family: tor-pt, repo: github.com/tgragnato/snowflake, notes: "actively-maintained github fork. Adds custom DTLS fingerprint distinct from popular WebRTC stacks, custom broker-negotiation transport (TLS 1.3 + MultiPath TCP), client-side TLS-in-DTLS padding, and other hardening on top of upstream."}
+references: []
+internal_refs: []
+tags:
+  - p2p-swarm
+  - webrtc
+  - dtls-fingerprint-target
+  - browser-extension-volunteers
+  - flash-proxy-descendant
+  - amp-cache-rendezvous
+  - sqs-rendezvous
+  - turbo-tunnel
+  - tor-pluggable-transport
+  - blocked-by-pion-dtls-2026
+license: BSD-3-Clause
+body_path: text/snowflake.md
+summary: |
+  Tor's WebRTC pluggable transport — the canonical reference design that Lantern's `unbounded` and Psiphon's `psiphon-inproxy` both descend from. Volunteer proxies run in browser tabs (web extension), as standalone Go binaries, or as embedded "badges" on participating websites; clients in censored regions are paired to a proxy by a central **broker** reached via a domain-fronted "rendezvous" channel (AMP cache, HTTPS to Cloudflare/Fastly, or — newer — Amazon SQS queues). Tor traffic rides over a WebRTC DataChannel between the client and the proxy; the proxy relays bytes (over WebSocket) to a Tor bridge. Same threat-model envelope as the WebRTC family: residential-IP volunteers + ephemeral peer endpoints + brokered discovery. **The default pion-DTLS ClientHello fingerprint became a TSPU/Russia DPI target in March 2026** (net4people/bbs#603), motivating both the upstream and forks (incl. tgragnato's) to ship per-connection DTLS fingerprint randomization or browser-mimicry — the same problem Lantern's covertdtls and Psiphon's covert-dtls address. The Tor Project's `snowflake-webext` (Chrome/Firefox extension) is the canonical browser-volunteer surface — a deployment niche neither psiphon-inproxy nor unbounded explicitly target the same way.
