@@ -1,0 +1,26 @@
+id: outline-smart-dialer
+name: "Outline Smart Dialer"
+family: outline
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/Jigsaw-Code/outline-sdk
+  docs: https://github.com/Jigsaw-Code/outline-sdk/blob/main/x/smart/README.md
+implementations:
+  - {family: outline, repo: github.com/Jigsaw-Code/outline-sdk, notes: "x/smart/. Composes DNS resolvers + TLS-evasion strategies + optional fallback proxy via a YAML / JSON config language; races candidates and returns the first working combination."}
+references: []
+internal_refs:
+  - 2026-04-non-protocol-evasion
+tags:
+  - meta-strategy
+  - racer-pattern
+  - dns-strategy-search
+  - tls-strategy-search
+  - composable-strategy
+  - configurl-config-language
+  - outline-sdk
+  - design-pattern
+license: Apache-2.0
+body_path: text/outline-smart-dialer.md
+summary: |
+  Not a wire protocol — a **strategy-finder** that takes a list of candidate evasion strategies (DNS resolvers, TLS-layer transforms, optional fallback proxies) and races them against a list of test domains. The first combination that successfully reaches all the test domains wins, and the dialer it returns is configured to use that combination for all subsequent connections. Configured by a YAML or JSON document expressed in Outline's `configurl` mini-language: `dns:` lists DNS-over-HTTPS / DNS-over-TLS / UDP / TCP / system resolvers; `tls:` lists string transforms (`""` = no-op, `split:2`, `tlsfrag:1`, `override:host=cloudflare.net|tlsfrag:1`, etc.); `fallback:` lists Shadowsocks / SOCKS5 / Psiphon configs to use only if every "proxyless" strategy fails. The catalog entry exists because this is the **design pattern Outline pushes** for protocol-designer reasoning — instead of "which protocol works in country X today," ship a small set of strategies and let the client probe per session. Several of the candidates are entries in this catalog (`outline-tls-fragmentation`, `outline-tcp-tricks`, `outline-shadowsocks`).

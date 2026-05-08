@@ -1,0 +1,30 @@
+id: outline-shadowsocks
+name: "Outline Shadowsocks (AEAD)"
+family: outline
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/Jigsaw-Code/outline-sdk
+  spec: https://shadowsocks.org/guide/aead.html
+  docs: https://github.com/Jigsaw-Code/outline-sdk/blob/main/transport/shadowsocks/doc.go
+implementations:
+  - {family: outline, repo: github.com/Jigsaw-Code/outline-sdk, notes: "client side; transport/shadowsocks/. Module path migrated to golang.getoutline.org/sdk under the new Outline Foundation."}
+  - {family: outline, repo: github.com/Jigsaw-Code/outline-ss-server, notes: "server side. Adds probe-resistance via salt history (replayed salts get silently dropped), multiple-key support per port, and configurable initial-packet prefix for FET evasion."}
+  - {family: outline, repo: github.com/Jigsaw-Code/outline-server, notes: "the user-facing 'Outline Manager' wrapping outline-ss-server"}
+references: []
+internal_refs: []
+tags:
+  - shadowsocks
+  - aead-2022
+  - chacha20-poly1305
+  - aes-gcm
+  - hkdf-key-derivation
+  - salt-replay-defense
+  - look-like-nothing
+  - blocked-by-fet
+  - per-conn-salt
+  - lazy-write-packet-shaping
+license: Apache-2.0
+body_path: text/outline-shadowsocks.md
+summary: |
+  Outline's AEAD-Shadowsocks implementation. The wire is a per-connection random salt (16-32 bytes, cipher-dependent) followed by AEAD-encrypted SOCKS-style target address + payload, using HKDF-derived keys from a shared password. Supported AEAD ciphers: ChaCha20-Poly1305, AES-128/192/256-GCM. The Outline-specific evasion contribution is **lazy-writing the client's initial data**: the dialer buffers application payload for `ClientDataWait` (10ms default) so the salt + SOCKS address + first app bytes ship in **one** TCP packet, randomizing the initial-packet size to defeat fixed-size first-packet fingerprinting. The companion outline-ss-server adds salt-replay history (rejects duplicates silently with a randomized delay) and supports a configurable byte prefix on the wire to address fully-encrypted-traffic detection. Architecturally pure look-like-nothing — same FET vulnerability profile as obfs4 — so production deployments rely on the prefix feature + the broader Outline SDK's evasion strategies (TLS fragmentation, Smart Dialer) to harden first-packet shape.

@@ -1,0 +1,28 @@
+id: outline-tls-fragmentation
+name: "Outline TLS Record Fragmentation (tlsfrag)"
+family: outline
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/Jigsaw-Code/outline-sdk
+  spec: https://nerd2.nrw/wp-content/uploads/2024/05/3576915.3624372.pdf
+  docs: https://github.com/Jigsaw-Code/outline-sdk/blob/main/transport/tlsfrag/doc.go
+implementations:
+  - {family: outline, repo: github.com/Jigsaw-Code/outline-sdk, notes: "transport/tlsfrag/. StreamDialer that wraps an underlying TCP dialer and splits the TLS handshake record."}
+references:
+  - 2023-niere-poster
+internal_refs:
+  - 2026-04-non-protocol-evasion
+tags:
+  - tls-record-fragmentation
+  - sni-evasion
+  - clienthello-splitting
+  - userspace-only
+  - composable-strategy
+  - niere-2023
+  - outline-sdk
+  - format-transform
+license: Apache-2.0
+body_path: text/outline-tls-fragmentation.md
+summary: |
+  Outline SDK strategy that intercepts the outgoing TLS handshake record carrying the ClientHello and splits it across **multiple TLS records** (not multiple TCP segments — these are higher-layer record-level fragments). A censor that matches SNI by reading a single TLS record sees only a fragment and can't reassemble; a censor that maintains TLS record state has to allocate buffer for potential reassembly, making the censorship more expensive. Per the niere et al. ACM CCS 2023 poster — operates entirely in userspace above TCP, so no kernel privileges are required (a userspace client can fragment its own ClientHello). The Outline implementation offers a fixed-length API (`NewFixedLenStreamDialer` — split at exactly N bytes, allocation-free) and a callback API (`NewStreamDialerFunc` — caller decides the split point per ClientHello, e.g. just before / after the SNI extension). Different layer of attack from `outline-tcp-split` (which fragments at the TCP-segment layer); these two are complementary, not redundant.

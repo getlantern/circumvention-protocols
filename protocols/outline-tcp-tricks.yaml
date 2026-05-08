@@ -1,0 +1,25 @@
+id: outline-tcp-tricks
+name: "Outline TCP-layer Tricks (split + disorder)"
+family: outline
+status: active
+languages: [go]
+upstream:
+  repo: https://github.com/Jigsaw-Code/outline-sdk
+  docs: https://github.com/Jigsaw-Code/outline-sdk
+implementations:
+  - {family: outline, repo: github.com/Jigsaw-Code/outline-sdk, notes: "transport/split/ for TCP-segment splitting, x/disorder/ for the TTL-disorder trick. Both ship as composable StreamDialer wrappers."}
+references: []
+internal_refs: []
+tags:
+  - tcp-segment-splitting
+  - ttl-manipulation
+  - geneva-style
+  - dpi-state-confusion
+  - composable-strategy
+  - userspace-only
+  - outline-sdk
+  - format-transform
+license: Apache-2.0
+body_path: text/outline-tcp-tricks.md
+summary: |
+  Two complementary TCP-layer evasion tricks the Outline SDK exposes as composable StreamDialer wrappers. **`split`** writes the outgoing stream in two (or more) independent `Write()` calls at caller-chosen byte offsets, so a single TCP send turns into multiple TCP segments — useful when DPI matches by reading exactly one segment of payload (e.g. for SNI extraction). **`disorder`** sets the TCP socket's IP TTL/HopLimit to 1 for a specific Nth Write, so that packet's IP datagram is dropped at the first hop after the local network — but a censor's middlebox sitting **between** the client and that hop sees the packet and updates its DPI state, while the server never receives it. The next Write restores the TTL and resends the same data normally; the server processes it as the actual stream and the censor's state is now desynced from reality. Both are Geneva-style stateful-DPI confusion at the TCP layer, applied entirely in userspace via standard sockopt (no raw sockets, no kernel modules). Composable underneath any TCP-using transport in the catalog.
