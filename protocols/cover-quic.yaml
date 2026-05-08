@@ -1,0 +1,54 @@
+id: cover-quic
+name: "QUIC"
+kind: cover
+family: cover
+status: active
+category: transport-encryption
+rfc: [9000, 9001, 9002, 9114, 9204, 9221, 9250, 9298, 9369, 9484, 9701]
+collateral_cost: critical
+crypto_surface:
+  visible:
+    - "client IP + ephemeral source port → server IP + UDP/443 (overwhelmingly)"
+    - "QUIC version field on Initial packets (4 bytes; 0x00000001 for QUIC v1, 0x6b3343cf for QUIC v2)"
+    - "Source / Destination Connection ID lengths and bytes on long-header packets (Initial / Handshake / 0-RTT)"
+    - "Token field on Initial (Retry / NEW_TOKEN-derived)"
+    - "Inner TLS ClientHello carried in CRYPTO frames inside Initial packets — same SNI / ALPN / extensions / JA3/JA4-equivalent fingerprint as TLS-over-TCP, decryptable with the spec-published Initial keys"
+    - "Short-header (1-RTT) packet boundaries + sizes + timings on the encrypted steady state — sometimes including a stable destination Connection ID across an entire session unless the server rotates"
+    - "Spin bit (1 bit per 1-RTT packet) for end-to-end latency measurement, when enabled"
+  encrypted:
+    - "Everything past Initial keys: Handshake, 0-RTT, and 1-RTT payloads (frames, streams, datagrams)"
+    - "ALPN value on the inner ClientHello when ECH is in use"
+    - "All HTTP/3 framing: requests, responses, headers (QPACK-compressed), bodies, server push, datagrams"
+    - "QUIC Connection-Close, NEW_CONNECTION_ID, PATH_CHALLENGE / PATH_RESPONSE — all in 1-RTT-encrypted payload"
+common_implementations:
+  - {name: "Chromium QUIC", vendor: "Google", scope: "Chrome, Edge (Chromium), Android WebView, the dominant client-side stack"}
+  - {name: "msquic", vendor: "Microsoft", scope: "Windows network stack, IIS, MS Edge fallback, SMB-over-QUIC server side"}
+  - {name: "quiche", vendor: "Cloudflare", scope: "Cloudflare's edge — every CF-fronted property's HTTP/3 + WARP MASQUE + DoH/DoQ"}
+  - {name: "mvfst", vendor: "Meta", scope: "Meta production traffic — Facebook / Instagram / WhatsApp"}
+  - {name: "s2n-quic", vendor: "Amazon Web Services", scope: "AWS CloudFront, several AWS-managed services"}
+  - {name: "Apple's QUIC", vendor: "Apple", scope: "macOS / iOS / iPadOS / visionOS Network framework — iCloud, App Store, Apple Push, MASQUE relay client"}
+  - {name: "ngtcp2 + nghttp3", vendor: "ngtcp2 project", scope: "curl, the standard reference implementation; many CDN edge testbeds"}
+  - {name: "quic-go", vendor: "quic-go project", scope: "Caddy, sing-box, lantern-box, hysteria2 (apernet's fork), most Go HTTP/3 servers"}
+  - {name: "picoquic", vendor: "Christian Huitema", scope: "Research / IETF interop reference"}
+  - {name: "neqo", vendor: "Mozilla", scope: "Firefox"}
+upstream:
+  spec: https://www.rfc-editor.org/rfc/rfc9000
+  docs: https://datatracker.ietf.org/wg/quic/about/
+references: []
+internal_refs: []
+tags:
+  - quic
+  - http3
+  - udp443
+  - transport-encryption
+  - tls13-inner
+  - connection-migration
+  - encrypted-transport
+  - ietf-standard
+  - high-collateral-cost
+  - critical-infrastructure
+license: "RFC standard (no license — IETF specification)"
+body_path: text/cover-quic.md
+used_as_cover_by: []
+summary: |
+  IETF transport-encryption protocol that runs TLS 1.3 over UDP. RFC 9000 (May 2021) is the v1 core, with RFC 9001 mapping TLS 1.3 onto it, RFC 9002 specifying loss recovery + congestion control, and RFC 9221 adding unreliable DATAGRAM frames. The QUIC + HTTP/3 (RFC 9114) substrate carries roughly 30-40% of all HTTP requests in 2026 (Cloudflare Radar, W3Techs) and is the wire for **a growing constellation of distinct application protocols** that all look identical to QUIC at the censor's vantage point: HTTP/3 itself, MASQUE (CONNECT-UDP / CONNECT-IP / CONNECT-Ethernet for Apple iCloud Private Relay + Cloudflare WARP + Cisco Secure Access + Chrome IP Protection), WebTransport (Baseline 2026), Media-over-QUIC (in IETF WG), SMB-over-QUIC (Microsoft enterprise file share), DNS-over-QUIC (RFC 9250), and emerging gRPC-over-HTTP/3. **Collateral cost of a wholesale block is critical** — wholesale-blocking UDP/443 breaks the modern Internet's video-streaming, conferencing, and major-vendor consumer / enterprise stacks simultaneously. Censors instead **throttle** UDP/443 (observed in Russia 2024, Iran 2024-2025, parts of GFW under load), forcing clients to fall back to HTTP/2 over TCP. Wire is materially distinct from TLS-over-TCP — UDP transport, Connection-ID-based session identity, distinctive Initial-packet structure with unencrypted-but-obfuscated headers — but **everything that rides on QUIC subsumes to this single cover entry** by the wire-distinctness criterion.
