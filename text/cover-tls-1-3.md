@@ -247,6 +247,58 @@ constraint:
 
 These are the surfaces a mimic has to reproduce.
 
+## Common Ports & Collateral Cost
+
+Wire-shape mimicry is one collateral-freedom axis; **port choice is a
+separate one**. A TLS-shaped circumvention service running on a port
+other than 443 inherits the collateral-cost properties of whatever
+high-value service is canonical on that port — censors who try to
+block by port hit the cover service first.
+
+| Port | Cover service | What blocks if a censor wholesale-drops the port |
+| --- | --- | --- |
+| **443** | HTTPS / HTTP/3 | The Internet |
+| **853** | DNS-over-TLS (DoT) | Encrypted DNS for Android Private DNS, several OS-default resolvers; clients fall back to plaintext or DoH |
+| **993** | IMAPS | Inbound mail clients globally — Outlook, Apple Mail, Thunderbird, every mobile mail app |
+| **995** | POP3S | Inbound POP3; smaller user base, mostly legacy enterprise |
+| **587** | Submission with STARTTLS | Outbound mail from clients — the dominant submission port |
+| **465** | SMTPS (implicit TLS submission) | Outbound mail from clients (alternative to 587) |
+| **636** | LDAPS | Active Directory binds, virtually every SSO / Group-Policy refresh in any AD environment |
+| **5061** | SIPS | Microsoft Teams Phone (~80M users), Zoom Phone, every IP-PBX, every carrier SIP trunk |
+| **5223** | Apple APNS | The persistent push channel every iOS / macOS / iPadOS / watchOS device keeps open 24/7 — blocking 5223 disables push notifications globally for the Apple device population |
+| **2083** | RadSec | Eduroam global Wi-Fi roaming federation (~10,000 institutions in 100+ countries); WBA OpenRoaming carrier consortium |
+| **8883** | MQTTS | AWS IoT Core, Azure IoT Hub, HiveMQ, Tesla vehicle telemetry, IIoT brokers |
+| **8443** | alt-HTTPS / management consoles | Most enterprise admin UIs (Cisco, VMware, Citrix NetScaler / Gateway, Horizon, BIG-IP, Splunk) |
+| **2087, 2096** | cPanel WHM / webmail | Mass-market web-hosting control panels |
+| **4843** | OPC UA over HTTPS | Industrial-automation cloud profiles (factory floors → cloud analytics) |
+| **5671** | AMQPS | Enterprise event-driven backbones (RabbitMQ, IBM MQ, Azure Service Bus, AWS Amazon MQ) |
+
+The censor's calculus differs per port. Port 443 is essentially
+unblockable; port 5223 is unblockable for any economy where iPhones
+are deployed; port 5061 is unblockable wherever knowledge-worker
+voice calling happens. The long-tail ports (cPanel, Splunk admin)
+have lower individual collateral but blocking enterprise admin
+ports tends to be politically visible because IT staff notice
+immediately.
+
+A circumvention design choosing a port has therefore three knobs:
+
+1. **Generic high-volume cover** (443) — best wire-anonymity, but the
+   single most-fingerprinted port on the Internet.
+2. **Targeted high-value cover** (5061, 5223, 8883, 636, ...) —
+   smaller traffic baseline so the design must look behaviorally
+   plausible (real SIPS handshake patterns, real APNS keepalive
+   timings, real LDAP search rates), but the censor's per-port
+   collateral cost is much sharper.
+3. **Off-port mimicry** (running TLS-shaped traffic on an
+   unconventional port) — fragile; censors cheaply block
+   unfamiliar destinations first. Don't.
+
+The bullet (2) targeted-port strategy is under-explored relative
+to (1) generic-443 strategies in the existing circumvention
+catalog — none of the entries currently in `circumvention-protocols`
+use port-targeting as their collateral-freedom story.
+
 ## Mimicry Considerations
 
 The hardest things about convincing TLS 1.3 mimicry:
