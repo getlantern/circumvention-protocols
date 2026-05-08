@@ -1,0 +1,52 @@
+id: cover-dtls
+name: "DTLS"
+kind: cover
+family: cover
+status: active
+category: transport-encryption
+rfc: [9147, 6347, 9146, 9145, 5764, 7252]
+collateral_cost: high
+crypto_surface:
+  visible:
+    - "client IP + ephemeral source port → server IP + UDP port (varies; commonly 3478 STUN-multiplexed, 5349 TURNS, 4500 IPsec-NAT-T, 5684 CoAP-DTLS, 443 Cisco AnyConnect, ephemeral high ports for WebRTC)"
+    - "DTLS record header (13 bytes): type | version (0xfeff DTLS 1.0 / 0xfefd 1.2 / 0xfefc 1.3) | epoch (2B) | sequence number (6B) | length (2B). Distinct from TLS's 5-byte header."
+    - "ClientHello / ServerHello — same TLS 1.3 / 1.2 inner content as TLS-over-TCP, decryptable by anyone (no Initial-keys obfuscation like QUIC)"
+    - "HelloVerifyRequest cookie exchange (DTLS-distinctive DoS-protection round trip)"
+    - "Handshake-message fragmentation fields (message_seq, fragment_offset, fragment_length)"
+    - "Encrypted-record sizes + timing on the steady state"
+    - "Connection ID (RFC 9146 / 9145) when negotiated — survives NAT rebinding"
+  encrypted:
+    - "Everything past the handshake — all DTLS 1.2 / 1.3 application data"
+    - "(in DTLS-SRTP) the inner SRTP payload — the actual media bytes"
+    - "(with ECH on the inner ClientHello) the inner SNI / ALPN"
+common_implementations:
+  - {name: "OpenSSL DTLS", vendor: "OpenSSL Foundation", scope: "the de-facto Linux server-side stack; Cisco AnyConnect server, OpenVPN-DTLS variants, Asterisk DTLS-SRTP"}
+  - {name: "BoringSSL DTLS", vendor: "Google", scope: "Chrome WebRTC, Android WebRTC stack, Google Meet"}
+  - {name: "NSS DTLS", vendor: "Mozilla", scope: "Firefox WebRTC"}
+  - {name: "Apple Security framework DTLS", vendor: "Apple", scope: "FaceTime, iOS / macOS WebRTC, CallKit-backed apps"}
+  - {name: "Schannel DTLS", vendor: "Microsoft", scope: "Microsoft Teams native client (where DTLS-SRTP is used), Windows IPsec"}
+  - {name: "pion/dtls", vendor: "Pion project", scope: "Snowflake (until covert-dtls), Lantern Unbounded, Psiphon Inproxy, every Go-WebRTC stack — the most-fingerprinted-as-circumvention DTLS implementation"}
+  - {name: "covert-dtls", vendor: "Psiphon-Labs", scope: "fingerprint-randomization wrapper around pion/dtls; consumed by Lantern Unbounded common/covertdtls/, Psiphon Inproxy, post-Mar-2026 Snowflake forks"}
+  - {name: "mbedTLS DTLS", vendor: "Trusted Firmware", scope: "embedded / IoT — many DTLS-CoAP devices (LwM2M)"}
+  - {name: "wolfSSL DTLS", vendor: "wolfSSL", scope: "embedded; some industrial DTLS deployments"}
+upstream:
+  spec: https://www.rfc-editor.org/rfc/rfc9147
+  docs: https://datatracker.ietf.org/wg/tls/about/
+references: []
+internal_refs: []
+tags:
+  - dtls
+  - dtls12
+  - dtls13
+  - udp-tls
+  - webrtc-transport
+  - dtls-srtp
+  - pion-dtls-fingerprint
+  - covertdtls
+  - tspu-march-2026
+  - real-time-media
+license: "RFC standard (no license — IETF specification)"
+body_path: text/cover-dtls.md
+used_as_cover_by: []
+summary: |
+  Datagram Transport Layer Security — TLS over UDP, with explicit record-layer sequence numbers + handshake fragmentation + a HelloVerifyRequest cookie exchange that TLS-over-TCP doesn't have. RFC 9147 (April 2022) is DTLS 1.3, deriving its cryptographic core from TLS 1.3; RFC 6347 (DTLS 1.2, 2012) is still the dominant production version. **Wire is materially distinct from both TLS-over-TCP and QUIC** — different record-header byte layout (13 bytes vs TLS's 5), explicit epoch + sequence number, distinctive cookie round trip, and UDP transport with no QUIC-style packet-number encryption. The dominant deployment is **WebRTC's DTLS-SRTP** (RFC 5764) — every browser-based video/voice call (Zoom, Teams, Meet, Discord, FaceTime, Snapchat, every meeting product on the public Internet). Other notable carriers: Cisco AnyConnect data-plane on UDP/443, OpenVPN-DTLS variants, CoAP-over-DTLS for IoT (RFC 7252; LwM2M billion-device fleet), IKEv2 / IPsec NAT-T edge cases. Collateral cost is **high** because of WebRTC's substrate position. **The canonical 2026 censor attack** is TSPU/Russia's March 2026 ClientHello-fingerprint match against pion-DTLS defaults (net4people/bbs#603), which broke Snowflake until pion-using projects adopted Psiphon's covert-dtls library or otherwise randomized fingerprints. This is the only catalog cover entry where a specific deployed implementation's default fingerprint has been a documented blocking vector — and the response set (covert-dtls in Lantern Unbounded, Psiphon Inproxy, Snowflake forks) is production catalog evidence of how a cover-protocol entry's mimicry-considerations notes turn into shipping code.
