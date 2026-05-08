@@ -17,6 +17,15 @@ video-conferencing vendor's hostile-NAT path. The cover
 candidacy is unusual: a fingerprintable protocol that's
 unblockable because of its collateral surface.
 
+**Caveat (see §Plain TURN vs. TURNS below):** the
+production majority of commercial TURN traffic is *TURNS-
+wrapped* (over TLS on TCP/5349 or DTLS on UDP/5349), not
+plain TURN. The wire-distinct plain-3478 cover candidacy
+rides the self-hosted coturn long tail (Jitsi, Matrix,
+Nextcloud Talk, smaller WebRTC SaaS), not the
+ubiquitous-WebRTC-everyone path. Choosing this cover means
+choosing that niche.
+
 ## Standardization
 
 - **RFC 8656** (Feb 2020, Standards Track) — *Traversal Using
@@ -244,6 +253,94 @@ hundreds of millions traversing a TURN relay.**
 
 Plain port 3478 / 5349 traffic is easily measurable in
 ISP NetFlow data — it's a known, published port.
+
+## Plain TURN vs. TURNS — the cover-population shape
+
+Critical nuance for cover candidacy: when this entry says
+"TURN," it covers four wire variants (plain TURN on UDP/3478
+and TCP/3478; TURNS-over-DTLS on UDP/5349; TURNS-over-TLS on
+TCP/5349). They are *not* equally common in production, and
+only the plain variants have wire-distinct shape — the TURNS
+variants subsume to [`cover-dtls`](cover-dtls.md) /
+[`cover-tls-1-3`](cover-tls-1-3.md). So the cover candidacy
+this entry stakes out is specifically **plain TURN on
+UDP/3478 + TCP/3478**, and the realistic cover-population
+for that wire shape is narrower than the catalog summary
+suggests.
+
+Three structural pressures push real-world TURN deployment
+toward the wrapped (TURNS) variants:
+
+1. **Browser ICE prefers UDP-first**, so when plain UDP/3478
+   succeeds it's preferred. But TURN is *needed* precisely
+   in hostile-NAT scenarios where plain UDP often fails —
+   the traffic that actually relies on TURN tends to land
+   on TCP/3478 or TCP/5349 instead.
+2. **Corporate / regulated egress policies** prefer TLS-
+   shaped outbound. Networks that allow only TLS push
+   WebRTC into TURNS even when plain TURN would technically
+   work.
+3. **Commercial vendors** (Cloudflare Calls, Microsoft Teams,
+   Twilio NTS, Vonage, Xirsys) increasingly default to
+   TURNS in their published `iceServers` configurations
+   for "security" marketing reasons.
+
+Where plain TURN survives:
+
+- **Self-hosted coturn deployments** — Jitsi Meet's bundled
+  TURN, Matrix.org homeservers, Nextcloud Talk, smaller
+  WebRTC SaaS, academic / research deployments. coturn's
+  default config listens on both 3478 and 5349; clients
+  whose `iceServers` config points to `turn:` URIs hit the
+  plain port.
+- **IoT / embedded WebRTC** where clients lack TLS budget.
+- **Lab / development environments** without TLS certs.
+
+Hard published ratios are sparse — Cloudflare Radar / M-Lab
+don't break out plain-TURN vs. TURNS publicly. Anecdotal
+evidence from the Pion / coturn / Jitsi communities suggests
+**the long tail of self-hosted coturn keeps plain UDP/3478
+alive but the production majority of TURN-relayed WebRTC
+traffic — especially from commercial vendors — is TURNS-
+wrapped**.
+
+Implications for cover candidacy:
+
+- A circumvention design on **plain UDP/3478** rides the
+  self-hosted-coturn long tail, not the dominant commercial
+  WebRTC flow. The cover-population is real but niche;
+  destination-IP enumeration is more feasible for a censor
+  than against the ubiquitous-TLS alternatives. Workable
+  if the design's destination IPs blend with ambient self-
+  hosted-WebRTC infrastructure (a domestic Iranian coturn
+  alongside Iranian Jitsi instances, Matrix homeservers
+  in EU/US clusters, etc.). *Not* a drop-in "look like
+  Twilio Video" replacement — Twilio Video is TURNS today.
+- A circumvention design on **TURNS-wrapped variants
+  (UDP/5349 DTLS, TCP/5349 TLS)** loses the wire-distinct
+  STUN-magic-cookie property that motivates this entry.
+  The wire shape becomes generic DTLS / TLS, subsuming to
+  [`cover-dtls`](cover-dtls.md) / [`cover-tls-1-3`](cover-tls-1-3.md).
+  What remains distinct is the **port** (5349 has its own
+  cover-population, smaller than 443 but specific to TURNS
+  users) and the **inner protocol** (the TURN allocate flow
+  is visible only to a TLS-decrypting / DTLS-decrypting
+  observer). The trade-off: stronger cover-population on
+  the wire (it's just TLS / DTLS), weaker port-collateral
+  story (5349 is less load-bearing than 443), and you
+  inherit cover-dtls's 2026 fingerprint-attack surface.
+- A **hybrid posture** — server listens on 3478 *and* 5349
+  with realistic responses on both, client uses plain
+  UDP/3478 by default and falls back to TURNS-on-5349
+  when UDP is throttled — most closely matches what real
+  coturn deployments ship. This is the most defensible
+  operational choice if you're committed to TURN-as-cover.
+
+The bottom line: the wire-distinctness argument for plain
+TURN is real but the cover-population is the self-hosted
+WebRTC ecosystem, *not* commercial WebRTC. Cover candidacy
+is strongest when the circumvention server's destination-IP
+profile blends with that ecosystem.
 
 ## Collateral Cost
 
